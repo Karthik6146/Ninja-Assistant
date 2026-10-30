@@ -1,0 +1,15 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+python-multipart==0.0.20
+pydantic==2.11.4
+langgraph==0.4.3
+langgraph-checkpoint-sqlite==2.0.10
+httpx==0.28.1
+filelock==4.0.9
+psutil==7.0.0
+python-dotenv==1.1.0
+pytest==8.3.5
+pytest-cov==6.1.1
+yt-dlp[default]==2026.8.19
+
+tzdata==2026.5

@@ -1,0 +1,21 @@
+# Channel profiles
+
+Open **Video Studio > Profiles**. Each connected YouTube channel appears automatically; existing workflows and publishing policies are retained.
+
+1. **Edit profile** once: choose its display name, audience, instructions and default workflow. Only that channel's workflows are offered. Save the profile. Connect additional accounts/channels through **Connect a channel**; a profile never grants access to an unverified channel.
+2. Select one or more profile cards. Write your shared instruction and optionally paste a source YouTube link for clipping. Leave the source empty to use each workflow's own input. A reference link supplies context/style, not reusable footage or permission to install tools.
+3. Choose **Start selected profiles**. Ninja uses local Qwen to adapt the brief, then queues the existing production workflows. Each selected channel's saved publishing policy is visible beside the button. Previously activated policies need no repeat approval. Paused/unconfigured workflows explain the setup needed. **Test selected locally** never publishes.
+4. Under **Shared task queue**, open **Progress & preview**. Watch the stage status and playable previews once generated. Send new instructions while processing. The old version stops safely and its replacement reuses source analysis. The window follows the replacement automatically. The channel and publication policy stay fixed. Once publication starts, that version is locked.
+5. **Content > All profiles** shows older and newer tasks together; each expanded card also opens the progress window. Schedule and Automations retain the existing controls. Advanced workflow settings remain available.
+
+Profile edits affect future requests. Jobs snapshot profile instructions, workflow settings, authorized connection and channel. Another visible profile never retargets a job. Failed planning for one profile does not remove successful tasks. Retry unfinished planning reuses their original task IDs. After a successful request, repeated clicks reuse that batch; **Prepare another batch** explicitly allows the same brief again.
+
+Profile settings persist in the existing database. Unsaved profile edits, selected channels and briefs persist in this browser. Conflicting profile saves are rejected; discard and reopen to load the latest version. You can stop an individual task, retry failed work, or retry a failed instruction from its progress window. Restart-interrupted planning appears as failed and can be retried without duplicating already queued tasks.
+
+Keep Ninja's worker running for planning, downloading, editing and local uploads. GPU-heavy stages run sequentially to avoid memory contention. This queues several channels together; it does not render them simultaneously. There is no five-channel storage limit (one batch accepts up to 50 profiles). This version has one shared reference field; use advanced setup for multiple references or assets. Existing standalone captions, metadata research and publishing integrations are reused.
+
+Navigation research (2026-10-10): [Buffer channel groups](https://support.buffer.com/articles/using-channel-groups-in-buffer-vtEPrhAiNr), [Buffer All Channels](https://support.buffer.com/en-us/articles/how-to-use-the-all-channels-view-in-buffer-oqqE4Sdf3T), [Metricool brands](https://help.metricool.com/how-to-setup-a-brand-rqv8d), [n8n executions](https://docs.n8n.io/build/understand-workflows/understand-executions/view-all-executions.md). Adapted navigation ideas only; no external code or platforms installed.
+
+Validation: six-channel backend fixtures cover independent profiles, reconnect persistence, immutable target/policy snapshots, partial failure, retry deduplication, worker dispatch, current-revision preview URLs and instruction priority. Browser fixtures cover six profiles, local-only batch submission, saved drafts, mid-task revision following, Escape/focus containment, 390px screens and reduced motion. Public publishing is mocked. Real additional accounts require their own OAuth connection.
+
+Verified: 96 backend tests, 4 frontend tests, production build, and six-profile browser journeys. Real local Qwen generated separate one-clip/30-second plans for two fixture audiences. No real uploads were initiated. The build reports a 511 KB JS chunk warning; library deprecation warnings remain.

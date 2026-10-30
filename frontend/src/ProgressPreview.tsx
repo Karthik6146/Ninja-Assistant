@@ -1,0 +1,26 @@
+import {useEffect,useRef,useState} from 'react';
+import {ClientProps} from './TaskPanel';
+import {useDraft} from './useDraft';
+type Progress={id:string;name:string;channel:string;policy:string;test:boolean;brief:string;locked:boolean;replacement?:string;job:{id:string;state:string;step:string;error?:string};stages:{name:string;state:string}[];previews:{label:string;url:string}[];limitations:string[];change?:{id:string;state:string;error?:string;text:string};instructions:{text:string;summary:string}[]};
+export default function ProgressPreview({id,onClose,...props}:ClientProps&{id:string;onClose:()=>void}){
+ const {api,action,busy}=props,dialog=useRef<HTMLDialogElement>(null);
+ const [current,setCurrent]=useState(id),[data,setData]=useState<Progress|null>(null),[error,setError]=useState(''),[clip,setClip]=useState(''),[commandError,setCommandError]=useState('');
+ const [drafts,setDrafts]=useDraft<Record<string,string>>('ninja-progress-instructions',{});
+ useEffect(()=>{dialog.current?.showModal();return()=>dialog.current?.close()},[]);
+ useEffect(()=>{let alive=true,inflight=false;setData(null);const poll=async()=>{if(inflight)return;inflight=true;try{const p=await api<Progress>('/studio/runs/'+current+'/progress');if(alive){if(p.replacement){setCurrent(p.replacement);return}setData(p);setError('')}}catch(e){if(alive)setError(String(e))}finally{inflight=false}};poll();const timer=setInterval(poll,2000);return()=>{alive=false;clearInterval(timer)}},[current]);
+ async function perform(fn:()=>Promise<void>){await action(async()=>{setCommandError('');try{await fn()}catch(e){setCommandError(e instanceof Error?e.message:String(e))}})}
+ const pending=!!data?.change&&['queued','running'].includes(data.change.state),preview=data?.previews.find(p=>p.url===clip)||data?.previews[0];
+ return <dialog ref={dialog} className="cms progressDialog" aria-labelledby="progress-title" onCancel={onClose}>
+  <div className="progressHeading"><div><span className="cmsEyebrow">LIVE WORKSPACE</span><h2 id="progress-title">{data?.name||'Loading task…'}</h2></div><button autoFocus onClick={onClose} aria-label="Close progress preview">Close</button></div>
+  {commandError&&<p role="alert" className="cmsCaution">{commandError}</p>}
+  {error&&<p role="alert">{error} · Reconnecting automatically.</p>}
+  {data&&<><p>{data.channel||'Local workspace'} · {data.test?'Local test':data.policy} · <strong>{data.job.state}</strong></p><p role="status">{pending?'Applying your instruction…':data.job.step}</p>
+   <ol className="progressStages" aria-label="Processing stages">{data.stages.map(s=><li key={s.name} className={s.state}><strong>{s.name}</strong><span>{s.state}</span></li>)}</ol>
+   <div className="progressColumns"><section aria-label="Video preview">{preview?<><label>Preview<select value={preview.url} onChange={e=>setClip(e.target.value)}>{data.previews.map(p=><option key={p.url} value={p.url}>{p.label}</option>)}</select></label><video key={preview.url} controls preload="metadata" src={preview.url}/></>:<div className="cmsEmpty"><h3>Your preview appears here</h3><p>Ninja is preparing the source and edit. A playable preview appears when the preview stage finishes.</p></div>}
+   {data.job.error&&<p role="alert" className="cmsCaution">{data.job.error}</p>}<div className="inline">{['queued','running'].includes(data.job.state)&&<button disabled={busy} onClick={()=>perform(async()=>{await api('/jobs/'+data.job.id+'/cancel','POST',{})})}>Stop task</button>}{['failed','cancelled'].includes(data.job.state)&&!pending&&!data.change&&<button disabled={busy} onClick={()=>perform(async()=>{await api('/studio/runs/'+current+'/retry','POST',{})})}>Retry failed steps</button>}</div></section>
+   <section className="cmsSteer"><h3>Direct Ninja as it works</h3>{data.locked?<p>Publishing has started. This version is locked. Start a new task for further edits.</p>:<><label>Change instructions<textarea aria-label="Change instructions" maxLength={3000} value={drafts[current]||''} onChange={e=>setDrafts({...drafts,[current]:e.target.value})} placeholder="Keep one clip, make the hook faster, and use a calmer style…"/></label><p>The current version stops safely. Ninja reuses source analysis and continues with your changes. Channel and publishing policy stay fixed.</p><button className="primary" disabled={busy||pending||!drafts[current]?.trim()} onClick={()=>perform(async()=>{await api('/studio/runs/'+current+'/instructions','POST',{text:drafts[current],key:crypto.randomUUID()});setDrafts({...drafts,[current]:''});setData({...data,change:{id:'',state:'queued',text:'',error:''}})})}>Send instruction</button></>}
+   {data.change&&<p role="status">Instruction: {data.change.state} {data.change.error}</p>}{data.change&&['failed','cancelled'].includes(data.change.state)&&<button disabled={busy} onClick={()=>perform(async()=>{await api('/studio/instruction-jobs/'+data.change!.id+'/retry','POST',{})})}>Retry instruction</button>}
+   {data.instructions.map((i,n)=><div className="cmsInstruction" key={n}><strong>{i.text}</strong><p>{i.summary}</p></div>)}{data.limitations.map(l=><p key={l}>{l}</p>)}<details><summary>Current brief</summary><p>{data.brief}</p></details></section></div>
+  </>}
+ </dialog>;
+}

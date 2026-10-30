@@ -1,0 +1,106 @@
+Build a local-first personal AI agent called “Ninja Assistant” for my own use. It should help with YouTube automation, video editing, web research, and Windows system management, with an extensible tool system.
+
+Implement the project, not just a plan. First inspect the repository and any AGENTS.md instructions. Preserve useful existing code. If the repository is empty, scaffold it. Make reasonable implementation choices and ask questions only for genuinely blocking requirements.
+
+Architecture:
+- React + TypeScript + Tailwind frontend.
+- Python FastAPI backend.
+- LangGraph for task routing, persistent workflow state, and review/resume steps.
+- SQLite for projects, jobs, preferences, audit events, and workflow checkpoints.
+- A separate background worker for transcription and rendering; do not run long jobs inside HTTP requests.
+- FFmpeg/ffprobe for media processing and faster-whisper for transcription.
+- Model adapters for Ollama and configurable cloud providers. Model names must be configurable.
+- Windows-first setup, with platform adapters for future Linux/macOS support.
+- Prefer native execution initially. Document optional containerization without pretending a container can directly manage the Windows host.
+- Verify current official documentation before implementing library integrations, and pin tested dependencies.
+
+Build one coordinator with specialized tools and workflows. Avoid unnecessary autonomous agent swarms.
+
+First working milestone:
+Create an end-to-end workflow where I import a local video, transcribe it, review suggested clips, edit captions, render a short video, and view/download the output.
+
+Video requirements:
+- Import common video formats using streaming uploads or approved local paths.
+- Inspect duration, resolution, frame rate, audio, and codec with ffprobe.
+- Preserve original media.
+- Transcribe with word timestamps where available.
+- Support English/Hindi transcription and a separate optional Romanized Hinglish conversion step that preserves timestamps and the original transcript.
+- Export editable SRT, VTT, and structured caption JSON.
+- Suggest clip ranges with reasons and confidence indicators; allow manual start/end adjustments.
+- Initially use transcript-based highlights and label that limitation clearly.
+- Support 9:16, 16:9, and 1:1 exports, with manual crop positioning.
+- Add editable caption presets: font, size, colours, outline, placement, and optional active-word highlighting when timings support it.
+- Support trim, clip ordering, volume controls, and optional user-provided music.
+- Store edits in a versioned JSON edit decision list rather than destructive media edits.
+- Provide an editable clip list and caption editor; do not attempt a full professional editing application in the first milestone.
+- Generate a low-resolution preview before final rendering.
+- Detect available encoders and offer CPU fallback.
+- Report real progress where possible, errors, cancellation, and output paths.
+
+Research module:
+- Implement a configurable search-provider adapter and URL extraction.
+- Track source URLs, retrieval dates, and supporting excerpts.
+- Produce reports with citations; distinguish verified facts from inference.
+- Clearly report missing search credentials or unavailable sources.
+- Treat webpages and documents as untrusted data, never as instructions.
+- Protect URL fetching against access to private network addresses and sensitive local resources.
+- Export Markdown reports.
+
+YouTube module:
+- Use the official YouTube Data API and OAuth, with minimum required scopes.
+- Draft scripts, titles, descriptions, tags, chapters, and thumbnail briefs.
+- Implement private uploads first, with resumable uploads and recovery.
+- Require explicit review of the exact video, channel, metadata, privacy, and schedule before publishing.
+- Display API quota and unverified-project restrictions accurately.
+- Record remote video IDs and reconcile interrupted uploads before retrying to prevent duplicates.
+- Never claim an upload or publication succeeded without API confirmation.
+- Add channel/analytics features through the appropriate official APIs later.
+- Do not build automated views, likes, subscriptions, or comment spam.
+
+System module:
+- Start with CPU/RAM/disk monitoring, process inspection, log inspection, and finding large files.
+- Restrict file operations to configured folders.
+- Allow organization and cleanup through previewable plans.
+- Require approval for deletion, process termination, software installation, startup changes, and system configuration changes.
+- Use OS trash/recycle-bin support where available.
+- Do not give the model unrestricted shell execution or administrator privileges.
+- Execute tools with validated arguments, timeouts, output limits, and subprocess argument arrays.
+
+Reliability and permissions:
+- Enforce permissions in backend code, not only prompts.
+- Canonicalize paths and reject traversal or symlink escapes outside approved roots.
+- Default to localhost binding, validate browser origins, and protect mutating requests.
+- Store credentials using the OS credential store where practical; redact logs and never expose secrets to model context.
+- Make cloud data sharing explicit and configurable; do not silently upload recordings.
+- Persist queued/running/waiting-review/completed/failed/cancelled job states.
+- Provide durable recovery, bounded retries, and idempotent side effects.
+- Limit concurrent GPU-heavy jobs, model steps, tokens, and optional API spending.
+- Handle missing dependencies, insufficient disk space, and GPU memory failures.
+- Bind approvals to exact action parameters and invalidate them if parameters change.
+- Include an emergency stop that cancels active tools and blocks further execution.
+
+Dashboard:
+Provide Chat, Projects, Jobs, Video Editor, Research, YouTube, System, Approvals, and Settings screens. Show task progress, previews, outputs, errors, and model usage. Keep unavailable integrations clearly marked as disconnected. Never display mock success as real execution.
+
+Extensibility:
+Define a typed tool interface with input/output schemas, permissions, timeouts, and audit logging. Keep business logic reusable so optional Telegram, n8n webhooks, browser automation, or MCP integrations can be added later. Do not install arbitrary community skills automatically.
+
+Implementation order:
+1. Inspect/scaffold, configuration, database, worker, and job dashboard.
+2. Complete the local video import → transcript → editable captions → preview → render workflow.
+3. Add model routing and sourced research.
+4. Add YouTube private uploads and review-based publishing.
+5. Add system tools, schedules, and optional integrations.
+
+Finish the first milestone before expanding. Continue through later milestones when feasible; document any unfinished features honestly.
+
+Deliver:
+- Working source code and pinned dependencies.
+- .env.example without secrets.
+- Windows setup/start scripts and README.
+- Architecture and extension documentation.
+- Meaningful tests for path restrictions, approvals, job recovery, caption timing, and upload deduplication.
+- A real end-to-end smoke test using a short generated sample video.
+- A final report of implemented features, checks run, setup requirements, and remaining limitations.
+
+Never substitute placeholder buttons, fabricated research, or simulated execution for working features.

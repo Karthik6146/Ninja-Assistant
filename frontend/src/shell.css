@@ -1,0 +1,109 @@
+/* Night-workshop palette: navy-tinted surfaces, arc-reactor cyan for Jarvis and primary actions, gold for counts and receipts.
+   Loaded after the older sheets so these tokens and shell rules win. */
+:root{
+ --ground:#0a1017;--rail:#0d151e;--surface:#111a24;--surface-2:#172230;--surface-3:#1e2b3b;
+ --line:#213042;--line-strong:#2d4157;--text:#e4edf5;--muted:#93a3b6;--faint:#7a8ba0;
+ --accent:#3ccff2;--accent-strong:#86e6fb;--accent-ink:#03222c;--accent-soft:#3ccff21f;--accent-line:#3ccff259;
+ --gold:#e5b452;--gold-ink:#241a05;--gold-soft:#e5b4521f;--ok:#5ed39b;--danger:#ff8a8a;--danger-soft:#ff8a8a1c;
+ --ease:cubic-bezier(.22,1,.36,1);
+ font-family:"Segoe UI Variable Text","Segoe UI","Nirmala UI",system-ui,sans-serif;color:var(--text);background:var(--ground);
+}
+body{background:var(--ground)}
+html{scrollbar-color:#2a3b4f transparent;scrollbar-width:thin}
+::selection{background:#3ccff24d;color:#fff}
+input,textarea,[contenteditable]{caret-color:var(--accent)}
+h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI","Nirmala UI",system-ui,sans-serif;color:var(--text)}
+p{color:var(--muted)}
+a{color:var(--accent-strong);text-underline-offset:3px}
+label,summary{color:#c3cfdb}
+code{color:var(--accent-strong)}
+pre{color:#b9c8d8}
+.eyebrow,.cmsEyebrow{display:none}
+
+button,.button{background:var(--surface-2);border-color:var(--line-strong);color:var(--text);border-radius:10px;transition:background-color .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease),transform .12s var(--ease)}
+button:hover,.button:hover{background:var(--surface-3)}
+button:active:not(:disabled){transform:translateY(1px)}
+.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.primary:hover{background:var(--accent-strong)}
+.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.ghost:hover{background:var(--surface-2);color:var(--text)}
+.iconButton{min-height:36px;width:36px;padding:0;background:transparent;border-color:transparent;color:var(--muted)}
+.iconButton:hover{color:var(--text)}
+.danger{background:var(--danger-soft);color:var(--danger);border-color:#ff8a8a40}
+:is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{background:var(--ground);border-color:var(--line-strong);color:var(--text)}
+input:focus,select:focus,textarea:focus{border-color:var(--accent-line)}
+input[type=checkbox],input[type=range],progress{accent-color:var(--accent)}
+
+.card{background:var(--surface);border-color:var(--line);border-radius:14px;box-shadow:0 12px 32px -20px #000d}
+.state{background:var(--surface-3);color:#c9d6e3}
+.state.completed{background:#5ed39b1f;color:var(--ok)}
+.state.failed{background:var(--danger-soft);color:var(--danger)}
+.state.running{background:var(--accent-soft);color:var(--accent-strong)}
+.state.waiting_for_approval{background:var(--gold-soft);color:var(--gold)}
+.badge{background:var(--surface-3);color:#c9d6e3}
+.segmented button[aria-pressed=true],.selected{background:var(--accent-soft)!important;border-color:var(--accent-line)!important;color:var(--accent-strong)}
+.error{background:var(--danger-soft);border-color:#ff8a8a40;color:#ffdada}
+.icon{flex:none;display:block}
+
+/* Rail: five places, each with icon and a word, so nothing has to be guessed. */
+.app{--rail-w:84px;--panel:0px;min-height:100vh}
+.app.hasPanel{--panel:360px}
+.rail{position:fixed;inset:0 auto 0 0;width:var(--rail-w);background:var(--rail);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 8px;gap:8px;z-index:10}
+.railMark{color:var(--accent);display:grid;place-items:center;width:44px;height:44px;margin-bottom:8px}
+.rail ul{list-style:none;margin:0;padding:0;display:grid;gap:4px;width:100%}
+.railItem{display:flex;flex-direction:column;gap:5px;width:100%;min-height:58px;padding:8px 4px;background:transparent;border:0;border-radius:12px;color:var(--faint);font-size:11px;font-weight:500;position:relative}
+.railItem:hover{background:var(--surface);color:var(--text)}
+.railItem[aria-current=page]{color:var(--accent-strong);background:var(--accent-soft)}
+.railCount{position:absolute;top:6px;right:16px;min-width:16px;height:16px;border-radius:8px;background:var(--gold);color:var(--gold-ink);font-size:10px;line-height:16px;padding:0 4px}
+.railStop{margin-top:auto;color:#c98a8a}
+.railStop:hover:not(:disabled),.railStop.engaged{background:var(--danger-soft);color:var(--danger)}
+
+main{margin-left:var(--rail-w);margin-right:var(--panel);padding:18px 32px 40px;min-width:0;transition:margin-right .25s var(--ease)}
+.topbar{display:flex;align-items:center;gap:20px;border-bottom:1px solid var(--line);padding:4px 0 14px;margin-bottom:24px;flex-wrap:wrap}
+.topbar h1{font-size:22px;margin:0;letter-spacing:-.4px;font-weight:650}
+.tabs{display:flex;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:3px}
+.tabs button{min-height:34px;background:transparent;border:0;color:var(--muted);padding:6px 14px;border-radius:8px;white-space:nowrap}
+.tabs button:hover{color:var(--text);background:transparent}
+.tabs button[aria-selected=true]{background:var(--surface-3);color:var(--text);box-shadow:0 1px 3px #0007}
+.topbarEnd{margin-left:auto;display:flex;align-items:center;gap:6px}
+.count{margin-left:2px;font-size:11px;background:var(--gold);color:var(--gold-ink);border-radius:8px;padding:0 6px;line-height:16px}
+.connection{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px;padding:0 6px;white-space:nowrap}
+.connection::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px #5ed39b26}
+.connection.offline::before{background:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+
+.taskPanel{background:var(--rail);border-left-color:var(--line);width:360px;box-shadow:-24px 0 48px -28px #000}
+.activityPage .taskPanel{position:static;width:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:none;margin-bottom:20px;padding:22px}
+
+.drawer{margin:0;padding:0;border:0;height:100vh;max-height:100vh;width:min(420px,92vw);background:var(--rail);color:var(--text);box-shadow:0 0 60px #000c;overflow:hidden}
+.drawer[open]{display:flex;flex-direction:column}
+.drawer.right{margin-left:auto;border-left:1px solid var(--line)}
+.drawer.left{border-right:1px solid var(--line)}
+.drawer::backdrop{background:#03070bb3}
+.drawer[open]{animation:drawerIn .28s var(--ease)}
+.drawer.right[open]{animation-name:drawerInRight}
+@keyframes drawerIn{from{transform:translateX(-28px);opacity:0}}
+@keyframes drawerInRight{from{transform:translateX(28px);opacity:0}}
+.drawerHead{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 12px 22px;border-bottom:1px solid var(--line)}
+.drawerHead h2{margin:0;font-size:17px}
+.drawerBody{padding:18px 22px;overflow-y:auto;flex:1}
+
+.login{max-width:460px;margin:12vh auto;color:var(--accent)}
+.login h2{color:var(--text);font-size:26px;margin:18px 0 8px}
+
+@media(max-width:760px){
+ .app{--rail-w:0px}
+ .rail{inset:auto 0 0 0;width:auto;height:64px;flex-direction:row;padding:4px 6px;border-right:0;border-top:1px solid var(--line)}
+ .railMark{display:none}
+ .rail ul{display:flex;flex:1}.rail li{flex:1}
+ .railItem{min-height:54px;padding:6px 2px}
+ .railStop{margin:0;width:64px}
+ main{padding:14px 16px 84px}
+ .app.hasPanel main{margin-right:0}
+ .taskPanel{width:100%;bottom:64px}
+ .tabs{order:3;width:100%;overflow-x:auto}
+}
+@media(prefers-reduced-motion:reduce){.drawer[open]{animation:none}button,main{transition:none}}
+/* Legacy pieces outside the redesigned surfaces, brought onto the shell palette. */
+.libraryEyebrow{display:none}
+.hero{background:var(--surface);border-color:var(--line)}

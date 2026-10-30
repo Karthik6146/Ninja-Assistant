@@ -1,0 +1,21 @@
+.venv/
+data/
+research/
+node_modules/
+frontend/dist/
+**/.impeccable/*.cache.json
+__pycache__/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+.claude/settings.local.json
+*.log
+.coverage
+
+# Local Graphify state; generated graph bundles remain reviewable.
+.graphify/branch.json
+.graphify/worktree.json
+.graphify/needs_update
+.graphify/cache/
+.graphify/.graphify*

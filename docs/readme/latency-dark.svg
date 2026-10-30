@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="260" viewBox="0 0 760 260" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<title>Voice latency: end of speech to Jarvis speaking</title>
+<text x="24" y="34" font-size="18" font-weight="600" fill="#e6edf3">You stop talking → Jarvis starts speaking</text>
+<text x="24" y="56" font-size="13" fill="#9198a1">Median of simulated voice turns through the running app (lower is better)</text>
+<line x1="330.0" y1="78" x2="330.0" y2="230" stroke="#30363d" stroke-width="1"/>
+<text x="330.0" y="248" font-size="12" fill="#9198a1" text-anchor="middle">0 s</text>
+<line x1="440.0" y1="78" x2="440.0" y2="230" stroke="#30363d" stroke-width="1"/>
+<text x="440.0" y="248" font-size="12" fill="#9198a1" text-anchor="middle">2 s</text>
+<line x1="550.0" y1="78" x2="550.0" y2="230" stroke="#30363d" stroke-width="1"/>
+<text x="550.0" y="248" font-size="12" fill="#9198a1" text-anchor="middle">4 s</text>
+<line x1="660.0" y1="78" x2="660.0" y2="230" stroke="#30363d" stroke-width="1"/>
+<text x="660.0" y="248" font-size="12" fill="#9198a1" text-anchor="middle">6 s</text>
+<text x="24" y="93" font-size="14" font-weight="600" fill="#e6edf3">Before</text>
+<text x="24" y="110" font-size="12" fill="#9198a1">push-to-talk, full reply then speech</text>
+<path d="M330,86 H623.0 Q627.0,86 627.0,90 V98 Q627.0,102 623.0,102 H330 Z" fill="#119dc0"/>
+<text x="635.0" y="99" font-size="13" fill="#e6edf3">≈4.8–6 s</text>
+<text x="24" y="139" font-size="14" font-weight="600" fill="#e6edf3">Phase 1</text>
+<text x="24" y="156" font-size="12" fill="#9198a1">streaming reply, opener spoken early</text>
+<path d="M330,132 H518.5 Q522.5,132 522.5,136 V144 Q522.5,148 518.5,148 H330 Z" fill="#119dc0"/>
+<text x="530.5" y="145" font-size="13" fill="#e6edf3">≈3.5 s</text>
+<text x="24" y="185" font-size="14" font-weight="600" fill="#e6edf3">Phase 2</text>
+<text x="24" y="202" font-size="12" fill="#9198a1">live mic, VAD + Smart Turn, GPU Whisper</text>
+<path d="M330,178 H463.5 Q467.5,178 467.5,182 V190 Q467.5,194 463.5,194 H330 Z" fill="#119dc0"/>
+<text x="475.5" y="191" font-size="13" fill="#e6edf3">≈2.5 s</text>
+</svg>

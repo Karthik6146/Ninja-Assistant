@@ -1,0 +1,6 @@
+export type Caption={start:number;end:number;text:string;words:{start:number;end:number;word:string}[]};
+export type Clip={start:number;end:number};
+export type EDL={version:1;revision:number;clips:Clip[];captions:Caption[];aspect:'9:16'|'16:9'|'1:1';crop_x:number;crop_y:number;volume:number;music:string|null;music_volume:number;style:{font:string;size:number;colour:string;outline_colour:string;outline:number;placement:'top'|'middle'|'bottom';active_word:boolean}};
+export type Project={id:string;name:string;source:string;created?:number;metadata:{duration:number;width:number;height:number;fps:string;codec:string;audio:boolean}|null;edl:EDL|null;suggestions:{start:number;end:number;reason:string;confidence:number}[];music?:string;reviewed_revision?:number};
+export type Job={id:string;project:string;kind:string;state:string;progress:number;error:string|null;result:{file?:string;preview?:boolean;revision?:number}|null};
+export function normalizeEDL(e:Partial<EDL>):EDL{return {version:1,revision:0,clips:[],captions:[],aspect:'9:16',crop_x:.5,crop_y:.5,volume:1,music:null,music_volume:.2,style:{font:'Arial',size:32,colour:'#ffffff',outline_colour:'#000000',outline:2,placement:'bottom',active_word:false},...e};}

@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T00:00:00Z",
+  "title": "Design System: Ninja",
+  "extensions": {
+    "colorMeta": {
+      "ground": { "role": "neutral", "displayName": "Night Ground", "canonical": "#0a1017", "tonalRamp": ["#0a1017", "#111a24", "#172230", "#1e2b3b", "#2d4157", "#4d6580", "#93a3b6", "#e4edf5"] },
+      "rail": { "role": "neutral", "displayName": "Rail Navy", "canonical": "#0d151e" },
+      "surface": { "role": "neutral", "displayName": "Workshop Surface", "canonical": "#111a24" },
+      "surface-raised": { "role": "neutral", "displayName": "Raised Navy", "canonical": "#172230" },
+      "surface-high": { "role": "neutral", "displayName": "High Navy", "canonical": "#1e2b3b" },
+      "line": { "role": "neutral", "displayName": "Cool Line", "canonical": "#213042" },
+      "line-strong": { "role": "neutral", "displayName": "Strong Line", "canonical": "#2d4157" },
+      "text": { "role": "neutral", "displayName": "Moonlight", "canonical": "#e4edf5" },
+      "text-soft": { "role": "neutral", "displayName": "Mist", "canonical": "#c9d6e3" },
+      "muted": { "role": "neutral", "displayName": "Slate", "canonical": "#93a3b6" },
+      "faint": { "role": "neutral", "displayName": "Dusk", "canonical": "#7a8ba0" },
+      "arc-cyan": { "role": "primary", "displayName": "Arc-Reactor Cyan", "canonical": "#3ccff2", "tonalRamp": ["#03222c", "#0d5568", "#137d97", "#1fa6c8", "#3ccff2", "#86e6fb", "#c2f3fd", "#effcff"] },
+      "arc-cyan-strong": { "role": "primary", "displayName": "Arc Glow", "canonical": "#86e6fb" },
+      "arc-cyan-soft": { "role": "primary", "displayName": "Arc Haze", "canonical": "#3ccff21f" },
+      "arc-cyan-line": { "role": "primary", "displayName": "Arc Edge", "canonical": "#3ccff259" },
+      "arc-ink": { "role": "primary", "displayName": "Arc Ink", "canonical": "#03222c" },
+      "receipt-gold": { "role": "secondary", "displayName": "Receipt Gold", "canonical": "#e5b452", "tonalRamp": ["#241a05", "#4a3610", "#76571c", "#a67c2c", "#e5b452", "#eec57a", "#f3d79a", "#fbf0d8"] },
+      "receipt-gold-soft": { "role": "secondary", "displayName": "Gold Haze", "canonical": "#e5b4521f" },
+      "gold-ink": { "role": "secondary", "displayName": "Gold Ink", "canonical": "#241a05" },
+      "ok": { "role": "tertiary", "displayName": "Verified Green", "canonical": "#5ed39b", "tonalRamp": ["#0b2a1c", "#154a32", "#20704b", "#349a69", "#5ed39b", "#8ae2b8", "#b9eed4", "#e6faf0"] },
+      "danger": { "role": "tertiary", "displayName": "Alarm Rose", "canonical": "#ff8a8a", "tonalRamp": ["#2e0c0c", "#561818", "#862828", "#c24848", "#ff8a8a", "#ffb0b0", "#ffdada", "#fff0f0"] },
+      "danger-soft": { "role": "tertiary", "displayName": "Rose Haze", "canonical": "#ff8a8a1c" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Jarvis greeting in the empty conversation; login heading at 26px." },
+      "headline": { "displayName": "Headline", "purpose": "Page title in the top bar." },
+      "title": { "displayName": "Title", "purpose": "Drawer headings." },
+      "body-conversation": { "displayName": "Conversation", "purpose": "Chat bubbles, full-contrast for mixed Devanagari and English." },
+      "body": { "displayName": "Body", "purpose": "Interface paragraphs, buttons, chips, receipt summaries." },
+      "label": { "displayName": "Label", "purpose": "Rail labels, small print, hints." }
+    },
+    "shadows": [
+      { "name": "card-settle", "value": "0 12px 32px -20px #000d", "purpose": "Cards resting on the ground." },
+      { "name": "tab-lift", "value": "0 1px 3px #0007", "purpose": "Selected Studio tab in its track." },
+      { "name": "panel-edge", "value": "-24px 0 48px -28px #000", "purpose": "Docked task panel." },
+      { "name": "overlay", "value": "0 0 60px #000c", "purpose": "Drawers." },
+      { "name": "overlay-float", "value": "0 20px 50px #000c", "purpose": "Voice settings panel." },
+      { "name": "focus-ring", "value": "0 0 0 3px #3ccff21f", "purpose": "Composer focus-within and mic-on." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(.22,1,.36,1)", "purpose": "All state transitions, drawer and voice-mode entrances." },
+      { "name": "control", "value": ".15s", "purpose": "Button colour changes; .12s press." },
+      { "name": "panel", "value": ".25s", "purpose": "Main column making room for the task panel." },
+      { "name": "drawer-in", "value": ".28s translateX(28px) + fade", "purpose": "Drawer entrance from its side." },
+      { "name": "orb-ring", "value": "28s linear spin; 2.6s while thinking", "purpose": "Orb outer ring rotation." },
+      { "name": "orb-breathe", "value": "1.6s alternate (3.2s standby)", "purpose": "Orb core while thinking or on standby." }
+    ],
+    "breakpoints": [
+      { "name": "phone", "value": "760px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action of a view, in arc cyan.",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 5.5v13M5.5 12h13\"/></svg>New conversation</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:10px 14px;border-radius:10px;border:1px solid #3ccff2;background:#3ccff2;color:#03222c;font:600 13px 'Segoe UI Variable Text','Segoe UI','Nirmala UI',system-ui,sans-serif;cursor:pointer;transition:background-color .15s cubic-bezier(.22,1,.36,1),transform .12s cubic-bezier(.22,1,.36,1)}.ds-btn-primary:hover{background:#86e6fb;border-color:#86e6fb}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Secondary actions on raised navy.",
+      "html": "<button class=\"ds-btn\">Open in Activity</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:10px 14px;border-radius:10px;border:1px solid #2d4157;background:#172230;color:#e4edf5;font:13px 'Segoe UI Variable Text','Segoe UI','Nirmala UI',system-ui,sans-serif;cursor:pointer;transition:background-color .15s cubic-bezier(.22,1,.36,1)}.ds-btn:hover{background:#1e2b3b}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Top-bar and title-bar actions with an icon and a word.",
+      "html": "<button class=\"ds-btn-ghost\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3.5 12a8.5 8.5 0 1 0 2.6-6.1\"/><path d=\"M3.5 4.5v4h4M12 7.5V12l3 2\"/></svg>History</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:10px 14px;border-radius:10px;border:1px solid transparent;background:transparent;color:#93a3b6;font:13px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,color .15s}.ds-btn-ghost:hover{background:#172230;color:#e4edf5}.ds-btn-ghost:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field on night ground with a cyan caret.",
+      "html": "<label class=\"ds-field\">Workspace name<input class=\"ds-input\" placeholder=\"Client project\"></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:8px;font:12px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;color:#c3cfdb}.ds-input{background:#0a1017;border:1px solid #2d4157;color:#e4edf5;border-radius:8px;padding:10px 12px;font:inherit;font-size:13px;caret-color:#3ccff2}.ds-input:focus{border-color:#3ccff259}.ds-input:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Composer",
+      "kind": "input",
+      "refersTo": "composer",
+      "description": "Jarvis message pill with round mic and primary send.",
+      "html": "<form class=\"ds-composer\"><textarea rows=\"1\" placeholder=\"Message Jarvis…\"></textarea><button type=\"button\" class=\"ds-mic\" aria-label=\"Talk\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><rect x=\"9\" y=\"3\" width=\"6\" height=\"11\" rx=\"3\"/><path d=\"M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21\"/></svg></button><button class=\"ds-send\" aria-label=\"Send\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linejoin=\"round\"><path d=\"M4.5 12 20 4.5 14.5 20l-2.7-6.3z\"/></svg></button></form>",
+      "css": ".ds-composer{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 16px;border:1px solid #2d4157;border-radius:24px;background:#111a24;transition:border-color .2s,box-shadow .2s}.ds-composer:focus-within{border-color:#3ccff259;box-shadow:0 0 0 3px #3ccff21f}.ds-composer textarea{flex:1;background:transparent;border:0;color:#e4edf5;font:14px 'Segoe UI Variable Text','Nirmala UI',system-ui,sans-serif;resize:none;outline:none;caret-color:#3ccff2}.ds-mic{width:40px;height:40px;border-radius:50%;border:1px solid #2d4157;background:#172230;color:#3ccff2;display:grid;place-items:center;cursor:pointer}.ds-mic:hover{background:#3ccff21f}.ds-send{width:40px;height:40px;border-radius:10px;border:0;background:#3ccff2;color:#03222c;display:grid;place-items:center;cursor:pointer}.ds-send:hover{background:#86e6fb}.ds-mic:focus-visible,.ds-send:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Icon Rail",
+      "kind": "nav",
+      "refersTo": "rail-item",
+      "description": "84px labelled rail; bottom tab bar under 760px.",
+      "html": "<nav class=\"ds-rail\"><button class=\"ds-rail-item\" aria-current=\"page\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"4.5\"/><circle cx=\"12\" cy=\"12\" r=\"1.4\" fill=\"currentColor\" stroke=\"none\"/><path d=\"M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21\"/></svg><span>Jarvis</span></button><button class=\"ds-rail-item\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12h4l3-7 4 14 3-7h4\"/></svg><span>Activity</span><b class=\"ds-count\">2</b></button></nav>",
+      "css": ".ds-rail{width:84px;background:#0d151e;border-right:1px solid #213042;padding:14px 8px;display:grid;gap:4px}.ds-rail-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;min-height:58px;padding:8px 4px;border:0;border-radius:12px;background:transparent;color:#7a8ba0;font:500 11px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,color .15s}.ds-rail-item:hover{background:#111a24;color:#e4edf5}.ds-rail-item[aria-current=page]{background:#3ccff21f;color:#86e6fb}.ds-rail-item:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}.ds-count{position:absolute;top:6px;right:16px;min-width:16px;height:16px;border-radius:8px;background:#e5b452;color:#241a05;font-size:10px;line-height:16px;padding:0 4px}"
+    },
+    {
+      "name": "Suggestion Chip",
+      "kind": "chip",
+      "refersTo": "suggestion-chip",
+      "description": "Real-capability prompts in the empty Jarvis state.",
+      "html": "<button class=\"ds-chip\">Check CPU and memory usage</button>",
+      "css": ".ds-chip{min-height:36px;padding:8px 14px;border-radius:999px;border:1px solid #213042;background:#111a24;color:#c9d6e3;font:13px 'Segoe UI Variable Text','Nirmala UI',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,border-color .15s,color .15s}.ds-chip:hover{border-color:#3ccff259;color:#e4edf5;background:#172230}.ds-chip:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Workshop surface resting on night ground.",
+      "html": "<section class=\"ds-card\"><h2>Workspaces</h2><p>Workspaces give Jarvis a separate memory scope.</p></section>",
+      "css": ".ds-card{background:#111a24;border:1px solid #213042;border-radius:14px;padding:24px;box-shadow:0 12px 32px -20px #000d;font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}.ds-card h2{margin:0 0 12px;font:600 21px 'Segoe UI Variable Display','Segoe UI',system-ui,sans-serif;color:#e4edf5;letter-spacing:-.4px}.ds-card p{margin:0;font-size:13px;line-height:1.75;color:#93a3b6}"
+    },
+    {
+      "name": "Receipt Card",
+      "kind": "custom",
+      "description": "Collapsible proof of actions Jarvis ran, with gold check.",
+      "html": "<details class=\"ds-receipt\"><summary><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-receipt-ok\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg><span>Ran 2 actions</span><small>1.4 s</small><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-receipt-chev\"><path d=\"M9 6l6 6-6 6\"/></svg></summary><div class=\"ds-receipt-body\">Reminder saved · verified</div></details>",
+      "css": ".ds-receipt{border:1px solid #213042;border-radius:12px;background:#111a24;font:13px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}.ds-receipt>summary{display:flex;align-items:center;gap:10px;padding:10px 14px;list-style:none;color:#c9d6e3;cursor:pointer}.ds-receipt>summary span{flex:1}.ds-receipt small{color:#93a3b6;font-size:11px}.ds-receipt-ok{color:#e5b452}.ds-receipt-chev{color:#7a8ba0;transition:transform .2s cubic-bezier(.22,1,.36,1)}.ds-receipt[open] .ds-receipt-chev{transform:rotate(90deg)}.ds-receipt-body{padding:10px 14px 14px;border-top:1px solid #213042;color:#93a3b6}.ds-receipt>summary:focus-visible{outline:2px solid #3ccff2;outline-offset:2px}"
+    },
+    {
+      "name": "Arc-Reactor Orb",
+      "kind": "custom",
+      "description": "Voice-mode signature: segmented ring, inner ring, glowing core scaled by --level.",
+      "html": "<div class=\"ds-stage\"><div class=\"ds-orb\" style=\"--level:.4\"><i></i><i></i><b></b></div></div>",
+      "css": ".ds-stage{display:grid;place-items:center;padding:32px;background:radial-gradient(ellipse at 50% 40%,#0f2331 0%,#081118 55%,#05090e 100%)}.ds-orb{--level:0;--size:200px;position:relative;width:var(--size);height:var(--size);border-radius:50%;display:grid;place-items:center}.ds-orb i{position:absolute;border-radius:50%}.ds-orb i:first-child{inset:0;background:repeating-conic-gradient(#3ccff2b3 0 21deg,transparent 21deg 30deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));animation:ds-spin 28s linear infinite}.ds-orb i:nth-child(2){inset:15%;border:1.5px solid #3ccff266;box-shadow:inset 0 0 calc(16px + var(--level)*44px) #3ccff22e;transform:scale(calc(1 + var(--level)*.06))}.ds-orb b{width:34%;height:34%;border-radius:50%;background:radial-gradient(circle,#effcff 0%,#86e6fb 24%,#3ccff2 48%,#0d5568 72%,transparent 74%);box-shadow:0 0 calc(28px + var(--level)*90px) calc(3px + var(--level)*16px) #3ccff259;transform:scale(calc(.92 + var(--level)*.34))}@keyframes ds-spin{to{transform:rotate(1turn)}}@media(prefers-reduced-motion:reduce){.ds-orb i{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Night Workshop",
+    "overview": "Ninja is one calm, dark workshop built around a single companion. The rooms are navy, not grey: five stepped tones from ground to raised surface carry all structure, separated by thin cool lines. Light in the room comes from one source, the arc-reactor cyan that marks Jarvis and the next obvious action, and from one secondary lamp, a warm gold that only ever counts things or proves that something happened.\n\nDensity is Operate-mode: a fixed labelled rail, a slim top bar, and a centred conversation column with nothing competing for the eye. Surfaces are flat and crisp. Glow is rationed: it lives in the voice-mode orb, the Jarvis empty-state mark, focus and active rings, and the connection dot. Everything else is edge, tone and type.\n\nType is Windows-native Segoe UI Variable with Nirmala UI behind it, so Devanagari and Latin share one line comfortably. Conversation text runs larger and at full contrast than interface text, because reading Jarvis is the main job.",
+    "keyCharacteristics": [
+      "Navy tonal layering, five steps, no grey.",
+      "One accent (arc cyan) for Jarvis and primary actions only; gold for counts, reminders and receipts only.",
+      "Labelled icon rail that becomes a bottom tab bar on phones.",
+      "One authored line-icon set, 1.75 stroke, recoloured by state.",
+      "Native `<dialog>` drawers for secondary places (History, Today).",
+      "The arc-reactor orb is the single signature element."
+    ],
+    "rules": [
+      { "name": "The One Light Source Rule", "body": "Cyan appears only on Jarvis and on the one primary action of a view. A second cyan button on a screen means one of them is wrong.", "section": "colors" },
+      { "name": "The Gold Means Proof Rule", "body": "Gold marks a number, a due reminder or a verified receipt. It is never decoration and never a second accent.", "section": "colors" },
+      { "name": "The Read-Jarvis-First Rule", "body": "Conversation text is always larger (15px) and brighter than interface text (13px muted). Never shrink a reply to fit chrome.", "section": "typography" },
+      { "name": "The Rationed Glow Rule", "body": "Glow is allowed on the orb, the empty-state mark, focus and active rings, and the connection dot halo. Cards, buttons, text and borders never glow.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** keep every surface on the navy ramp (ground, rail, surface, surface-raised, surface-high) and separate planes with 1px cool lines.",
+      "**Do** reserve arc cyan for Jarvis and the one primary action per view.",
+      "**Do** use receipt gold only for counts, due reminders and verified receipts.",
+      "**Do** draw icons from the single authored set: 24px grid, 1.75 stroke, round caps and joins, `currentColor`.",
+      "**Do** set conversation text at 15px / 1.65 in full-contrast text so mixed Devanagari and English stay legible.",
+      "**Do** give every control the 2px cyan focus outline and honour reduced motion.",
+      "**Do** open secondary places (history, today) in native dialog drawers rather than new pages."
+    ],
+    "donts": [
+      "**Don't** reintroduce the legacy lavender accent (`#d1c6ff` family) or neutral greys on new surfaces.",
+      "**Don't** add glow to cards, buttons, text or borders; glow belongs to the orb, the Jarvis mark, focus and active rings and the status dot.",
+      "**Don't** use gold as decoration or as a second accent.",
+      "**Don't** create a second signature element; the orb is the only one.",
+      "**Don't** use letter glyphs, emoji or text arrows as icons; use the authored SVG set."
+    ]
+  }
+}

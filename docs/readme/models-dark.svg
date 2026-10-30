@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="396" viewBox="0 0 760 396" font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+<title>Tool-choice accuracy by local model</title>
+<text x="24" y="34" font-size="18" font-weight="600" fill="#e6edf3">Tool-choice accuracy by local model</text>
+<text x="24" y="56" font-size="13" fill="#9198a1">52 real Jarvis requests in English, Hinglish and Hindi · RTX 4060 8 GB · median time per request</text>
+<line x1="200.0" y1="100" x2="200.0" y2="362" stroke="#30363d" stroke-width="1"/>
+<text x="200.0" y="380" font-size="12" fill="#9198a1" text-anchor="middle">0%</text>
+<line x1="435.0" y1="100" x2="435.0" y2="362" stroke="#30363d" stroke-width="1"/>
+<text x="435.0" y="380" font-size="12" fill="#9198a1" text-anchor="middle">50%</text>
+<line x1="670.0" y1="100" x2="670.0" y2="362" stroke="#30363d" stroke-width="1"/>
+<text x="670.0" y="380" font-size="12" fill="#9198a1" text-anchor="middle">100%</text>
+<text x="24" y="121" font-size="14" font-weight="600" fill="#e6edf3">qwen3.5:9b</text>
+<text x="24" y="139" font-size="12" fill="#9198a1">1.4 s · current</text>
+<path d="M200,108 H656.6 Q660.6,108 660.6,112 V118 Q660.6,122 656.6,122 H200 Z" fill="#119dc0"/>
+<text x="666.6" y="119" font-size="12" fill="#e6edf3">98%</text>
+<path d="M200,126 H666.0 Q670.0,126 670.0,130 V136 Q670.0,140 666.0,140 H200 Z" fill="#b57f24"/>
+<text x="676.0" y="137" font-size="12" fill="#e6edf3">100%</text>
+<text x="24" y="183" font-size="14" font-weight="600" fill="#e6edf3">qwen3:8b</text>
+<text x="24" y="201" font-size="12" fill="#9198a1">0.8 s</text>
+<path d="M200,170 H647.2 Q651.2,170 651.2,174 V180 Q651.2,184 647.2,184 H200 Z" fill="#119dc0"/>
+<text x="657.2" y="181" font-size="12" fill="#e6edf3">96%</text>
+<path d="M200,188 H656.6 Q660.6,188 660.6,192 V198 Q660.6,202 656.6,202 H200 Z" fill="#b57f24"/>
+<text x="666.6" y="199" font-size="12" fill="#e6edf3">98%</text>
+<text x="24" y="245" font-size="14" font-weight="600" fill="#e6edf3">gemma4:e4b</text>
+<text x="24" y="263" font-size="12" fill="#9198a1">0.4–0.7 s</text>
+<path d="M200,232 H619.0 Q623.0,232 623.0,236 V242 Q623.0,246 619.0,246 H200 Z" fill="#119dc0"/>
+<text x="629.0" y="243" font-size="12" fill="#e6edf3">90%</text>
+<path d="M200,250 H360.5 Q364.5,250 364.5,254 V260 Q364.5,264 360.5,264 H200 Z" fill="#b57f24"/>
+<text x="370.5" y="261" font-size="12" fill="#e6edf3">35%</text>
+<text x="24" y="307" font-size="14" font-weight="600" fill="#e6edf3">qwen3:4b</text>
+<text x="24" y="325" font-size="12" fill="#9198a1">7.8 s</text>
+<path d="M200,294 H384.0 Q388.0,294 388.0,298 V304 Q388.0,308 384.0,308 H200 Z" fill="#119dc0"/>
+<text x="394.0" y="305" font-size="12" fill="#e6edf3">40%</text>
+<path d="M200,312 H374.6 Q378.6,312 378.6,316 V322 Q378.6,326 374.6,326 H200 Z" fill="#b57f24"/>
+<text x="384.6" y="323" font-size="12" fill="#e6edf3">38%</text>
+<rect x="24" y="72" width="12" height="12" rx="3" fill="#119dc0"/>
+<text x="42" y="83" font-size="13" fill="#e6edf3">Typed request</text>
+<rect x="174" y="72" width="12" height="12" rx="3" fill="#b57f24"/>
+<text x="192" y="83" font-size="13" fill="#e6edf3">Voice request</text>
+</svg>

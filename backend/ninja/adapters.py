@@ -1,0 +1,338 @@
+import json
+import http.client
+import ipaddress
+import os
+import socket
+import ssl
+from datetime import datetime, timezone
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
+import httpx
+
+def ollama_url():
+    url=os.getenv('OLLAMA_URL','http://127.0.0.1:11434').rstrip('/')
+    parsed=urlsplit(url)
+    if parsed.scheme!='http' or parsed.hostname not in ('localhost','127.0.0.1','::1') or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError('Local Ollama requires a loopback HTTP URL. Configure remote inference as a cloud provider with explicit sharing consent.')
+    return url
+
+def local_model():
+    from . import db
+    with db.connect() as c:
+        row=c.execute("SELECT value FROM preferences WHERE key='ollama_model'").fetchone()
+    return row[0] if row else os.getenv('OLLAMA_MODEL','')
+
+def unload_local_models():
+    """Caller holds model.lock while handing the GPU to a local media service."""
+    try:
+        with httpx.Client(base_url=ollama_url(),timeout=30,trust_env=False) as client:
+            response=client.get('/api/ps');response.raise_for_status()
+            for model in response.json().get('models',[]):client.post('/api/generate',json={'model':model['name'],'keep_alive':0}).raise_for_status()
+    except httpx.ConnectError:pass  # Ollama need not be running for media-only work.
+    except httpx.HTTPError:raise ValueError('Could not release Ollama GPU memory; stop active chats or restart Ollama before retrying') from None
+
+
+def warm_local_model():
+    """Preload the chat model when a voice session starts; skipped while media work owns the GPU."""
+    from filelock import FileLock, Timeout
+    from .config import DATA
+    try:
+        with FileLock(DATA/'model.lock',timeout=0), httpx.Client(base_url=ollama_url(),timeout=60,trust_env=False) as client:
+            # Same num_ctx as agent_turn, or Ollama reloads the model on the first real turn.
+            client.post('/api/generate',json={'model':local_model(),'keep_alive':-1,'options':{'num_ctx':8192}})
+        return True
+    except (Timeout,httpx.HTTPError):return False
+
+
+def provider_status():
+    selected=local_model()
+    local={'id':'ollama','name':'Ollama','scope':'local','model':selected,'models':[], 'available':False,'message':'Start Ollama, then refresh connections.'}
+    try:
+        response=httpx.get(ollama_url()+'/api/tags',timeout=3)
+        response.raise_for_status()
+        local['models']=[m['name'] for m in response.json()['models']]
+        local['available']=selected in local['models']
+        local['message']='Ready' if local['available'] else 'Choose an installed model in Settings.'
+    except (httpx.HTTPError,ValueError,KeyError):pass
+    enabled=os.getenv('CLOUD_ENABLED')=='true' and bool(os.getenv('CLOUD_API_KEY') and os.getenv('CLOUD_URL','').startswith('https://') and os.getenv('CLOUD_MODEL'))
+    return [local,{'id':'cloud','name':'Cloud API','scope':'external','model':os.getenv('CLOUD_MODEL',''),'models':[os.getenv('CLOUD_MODEL')] if enabled else [],'available':enabled,'message':'Configured; availability verified on request. Explicit sharing consent required.' if enabled else 'Disabled. Configure CLOUD_ENABLED, URL, model and API key in .env.'}]
+
+
+def stream_chat(messages, provider, model, on_chunk, structured=False, on_usage=None):
+    """Visible answer tokens only; child-process cancellation bounds blocked requests."""
+    import json
+    from filelock import FileLock, Timeout
+    from .config import DATA
+    if sum(len(m['content']) for m in messages)>24000:
+        raise ValueError('Conversation context exceeds 24,000 characters. Start a new conversation or shorten attachments.')
+    if provider=='ollama':
+        model=model or local_model()
+        if not model:raise ValueError('Select an installed Ollama model in Settings.')
+        url=ollama_url()+'/api/chat'
+        headers={};body={'model':model,'stream':True,'think':False,'messages':messages,'options':{'num_predict':2048}}
+        if structured:
+            body['format']={'type':'object','properties':{'text':{'type':'string'},'citations':{'type':'array','items':{'type':'integer'}}},'required':['text','citations']}
+    elif provider=='cloud' and os.getenv('CLOUD_ENABLED')=='true':
+        url=os.getenv('CLOUD_URL','').rstrip('/')+'/chat/completions'
+        if not url.startswith('https://') or not os.getenv('CLOUD_API_KEY') or not os.getenv('CLOUD_MODEL'):raise ValueError('Cloud provider is not configured.')
+        headers={'Authorization':'Bearer '+os.environ['CLOUD_API_KEY']}
+        body={'model':os.environ['CLOUD_MODEL'],'stream':True,'stream_options':{'include_usage':True},'messages':messages,'max_tokens':2048}
+    else:raise ValueError('Cloud sharing is disabled. Use Ollama or explicitly configure a cloud provider.')
+    text='';done=False;usage={'input_tokens':None,'output_tokens':None}
+    try:
+        with FileLock(DATA/'model.lock',timeout=0), httpx.stream('POST',url,headers=headers,json=body,timeout=httpx.Timeout(120,connect=5)) as response:
+            if response.status_code>=400:raise ValueError(f'Model request returned HTTP {response.status_code}. Check the selected model and provider settings.')
+            for line in response.iter_lines():
+                if not line:continue
+                if provider=='cloud':
+                    if not line.startswith('data:'):continue
+                    line=line[5:].strip()
+                    if line=='[DONE]':done=True;break
+                data=json.loads(line)
+                if data.get('error'):raise ValueError('Provider rejected generation. Check model availability and provider logs.')
+                counts=data if provider=='ollama' else data.get('usage') or {}
+                keys=('prompt_eval_count','eval_count') if provider=='ollama' else ('prompt_tokens','completion_tokens')
+                reported={name:counts.get(key) for name,key in zip(usage,keys)}
+                if any(type(v)==int and v>=0 for v in reported.values()):
+                    for name,value in reported.items():
+                        if type(value)==int and value>=0:usage[name]=value
+                    if on_usage:on_usage(dict(usage),provider,body['model'])
+                if provider=='ollama':
+                    chunk=data.get('message',{}).get('content','');done=bool(data.get('done'))
+                else:
+                    choices=data.get('choices',[])
+                    chunk=choices[0].get('delta',{}).get('content','') if choices else ''
+                    if choices and choices[0].get('finish_reason'):done=True
+                if chunk:
+                    text+=chunk
+                    if len(text)>100000:raise ValueError('Model response exceeded output limit')
+                    on_chunk(text)
+                if provider=='ollama' and done:break
+    except Timeout:raise ValueError('Another model step is running. Retry after it finishes.') from None
+    except httpx.HTTPError:raise ValueError('Model connection failed or timed out. Start Ollama/check the provider, then retry this task.') from None
+    except json.JSONDecodeError:raise ValueError('Provider sent an invalid stream. Check API compatibility.') from None
+    if not done or not text.strip():raise ValueError('Provider stream ended without a complete answer. Partial text is saved in Activity; retry explicitly.')
+    return {'text':text,'provider':provider,'model':body['model'],'usage':usage}
+
+class Text(HTMLParser):
+    def __init__(self): super().__init__(); self.parts=[]; self.hidden=0
+    def handle_starttag(self,tag,attrs):
+        if tag in ('script','style'): self.hidden+=1
+    def handle_endtag(self,tag):
+        if tag in ('script','style'): self.hidden=max(0,self.hidden-1)
+    def handle_data(self,data):
+        if not self.hidden: self.parts.append(data.strip())
+
+def public_ip(text):
+    ip=ipaddress.ip_address(text)
+    if ip.version==6:
+        embedded=ip.ipv4_mapped or ip.sixtofour or (ipaddress.IPv4Address(int(ip)&0xFFFFFFFF) if ip in ipaddress.ip_network('64:ff9b::/96') else None)
+        if embedded and not embedded.is_global:return False
+    return ip.is_global and not ip.is_multicast
+
+def public_addresses(url):
+    u=urlsplit(url)
+    if u.scheme!='https' or not u.hostname or u.username or u.password or u.port not in (None,443):
+        raise ValueError('Only public HTTPS URLs on port 443 are permitted')
+    addresses={r[4][0] for r in socket.getaddrinfo(u.hostname,443,type=socket.SOCK_STREAM)}
+    if not addresses or any(not public_ip(a) for a in addresses):
+        raise ValueError('Private, loopback, reserved, and local network URLs are blocked')
+    return u,addresses
+
+def extract(url):
+    u,addresses=public_addresses(url)
+    # Pin the validated IP at connection time, preserving hostname TLS verification.
+    conn=http.client.HTTPSConnection(u.hostname,443,timeout=15,context=ssl.create_default_context())
+    sock=socket.create_connection((sorted(addresses)[0],443),timeout=15)
+    conn.sock=conn._context.wrap_socket(sock,server_hostname=u.hostname)
+    try:
+        conn.request('GET',(u.path or '/')+('?' + u.query if u.query else ''),headers={'User-Agent':'NinjaAssistant/0.1','Accept':'text/html,text/plain'})
+        response=conn.getresponse()
+        if response.status!=200: raise ValueError(f'Source returned {response.status}; redirects are not followed')
+        if not any(t in response.getheader('Content-Type','') for t in ('text/html','text/plain')): raise ValueError('Unsupported source type')
+        raw=response.read(1_000_001)
+        if len(raw)>1_000_000: raise ValueError('Source exceeds 1 MB limit')
+        parser=Text(); parser.feed(raw.decode('utf-8',errors='replace'))
+        excerpt=' '.join(p for p in parser.parts if p)[:16000]
+        return {'url':url,'retrieved':datetime.now(timezone.utc).isoformat(),'excerpt':excerpt,'status':'retrieved','verification':'Source excerpt only; claims have not been independently verified'}
+    finally: conn.close()
+
+def complete(prompt, provider='ollama', *, schema=None):
+    from filelock import FileLock, Timeout
+    from .config import DATA
+    try:
+        with FileLock(DATA/'model.lock',timeout=0):
+            return _complete(prompt,provider,schema=schema)
+    except Timeout:
+        raise ValueError('Another model step is running; try again after it completes')
+
+def _complete(prompt, provider='ollama', *, schema=None):
+    # No tools or shell access; explicit cloud opt-in, configurable names, bounded output.
+    if len(prompt)>24000: raise ValueError('Model input exceeds 24000 characters')
+    if schema is not None and provider!='ollama':raise ValueError('Structured metadata requires the local Ollama model')
+    if provider=='ollama':
+        model=local_model()
+        if not model: raise ValueError('Ollama disconnected: configure OLLAMA_MODEL')
+        # Reserve the bounded generation budget for a visible answer.
+        body={'model':model,'stream':False,'think':False,'messages':[{'role':'user','content':prompt}],'options':{'num_predict':1024}}
+        if schema is not None:body['format']=schema;body['options']['temperature']=0
+        response=httpx.post(ollama_url()+'/api/chat',json=body,timeout=120)
+        response.raise_for_status(); data=response.json()
+        if not data.get('message',{}).get('content','').strip():
+            raise ValueError('Ollama returned no visible reply. Try a shorter request or another configured model.')
+        return {'text':data['message']['content'],'usage':{'output_tokens':data.get('eval_count'),'input_tokens':data.get('prompt_eval_count')},'provider':'ollama'}
+    if provider!='cloud' or os.getenv('CLOUD_ENABLED')!='true': raise ValueError('Cloud sharing is disabled')
+    url=os.getenv('CLOUD_URL',''); key=os.getenv('CLOUD_API_KEY',''); model=os.getenv('CLOUD_MODEL','')
+    if not url.startswith('https://') or not key or not model: raise ValueError('Cloud provider is disconnected')
+    response=httpx.post(url.rstrip('/')+'/chat/completions',headers={'Authorization':'Bearer '+key},json={'model':model,'max_tokens':1024,'messages':[{'role':'user','content':prompt}]},timeout=120)
+    response.raise_for_status(); data=response.json()
+    return {'text':data['choices'][0]['message']['content'],'usage':data.get('usage',{}),'provider':'cloud'}
+
+
+def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048):
+    """Native local tool turn; partial text is provisional until done and validated."""
+    from filelock import FileLock
+    from .config import DATA
+    from .agent_models import AgentTurn,ToolCall
+    from . import db,media
+    import uuid,time
+    if db.cancelled(job):raise media.Cancelled()
+    if len(db.encode(messages))+len(db.encode(schemas))>70000:raise ValueError('Assistant context is too large; narrow the request')
+    if not 128<=max_tokens<=2048:raise ValueError('Invalid assistant response limit')
+    model=local_model()
+    if not model:raise ValueError('Select an installed Ollama model in Settings')
+    body={'model':model,'messages':messages,'tools':schemas,'stream':on_text is not None,'think':False,'keep_alive':-1,'options':{'num_predict':max_tokens,'num_ctx':8192,'temperature':0}}
+    started=time.monotonic();first_text=None
+    try:
+        with FileLock(DATA/'model.lock',timeout=0), httpx.Client(trust_env=False,timeout=httpx.Timeout(120,connect=5)) as client:
+            if on_text is None:
+                response=client.post(ollama_url()+'/api/chat',json=body)
+                response.raise_for_status()
+                if len(response.content)>200000:raise ValueError('Model tool response exceeded the size limit')
+                value=response.json()
+            else:
+                text='';call_items=[];value={};size=0
+                with client.stream('POST',ollama_url()+'/api/chat',json=body) as response:
+                    response.raise_for_status()
+                    for line in response.iter_lines():
+                        if db.cancelled(job):raise media.Cancelled()
+                        if not line:continue
+                        size+=len(line.encode('utf-8'))
+                        if size>200000:raise ValueError('Model tool response exceeded the size limit')
+                        try:chunk=json.loads(line)
+                        except json.JSONDecodeError:raise ValueError('Local model returned an invalid response stream') from None
+                        if not isinstance(chunk,dict) or chunk.get('error'):raise ValueError('Local model returned an unusable response stream')
+                        if type(chunk.get('done')) is not bool:raise ValueError('Invalid model completion flag')
+                        message=chunk.get('message',{})
+                        if not isinstance(message,dict):raise ValueError('Invalid model message')
+                        content=message.get('content') or ''
+                        if not isinstance(content,str):raise ValueError('Invalid model text')
+                        if content:
+                            if first_text is None:first_text=time.monotonic()-started
+                            text+=content
+                            if len(text)>12000:raise ValueError('Model reply exceeded the size limit')
+                            on_text(text)
+                        items=message.get('tool_calls') or []
+                        if not isinstance(items,list):raise ValueError('Invalid model tool calls')
+                        call_items.extend(items)
+                        if len(call_items)>12:raise ValueError('Model tool response exceeded the tool limit')
+                        if chunk.get('done') is True:
+                            value=chunk
+                            value['message']={'content':text,'tool_calls':call_items}
+                            break
+    except httpx.HTTPError:raise ValueError('Local model request failed. Start Ollama or choose an installed tool-capable model, then retry') from None
+    if db.cancelled(job):raise media.Cancelled()
+    if not isinstance(value,dict) or value.get('done') is not True or value.get('error'):raise ValueError('Local model did not finish a usable tool response')
+    message=value.get('message') or {};calls=[]
+    if not isinstance(message,dict) or not isinstance(message.get('content') or '',str) or not isinstance(message.get('tool_calls') or [],list):raise ValueError('Invalid model message')
+    if len(message.get('tool_calls') or [])>12 or len(message.get('content') or '')>12000:raise ValueError('Model tool response exceeded the size limit')
+    for item in message.get('tool_calls') or []:
+        if not isinstance(item,dict) or not isinstance(item.get('function'),dict):raise ValueError('Invalid model tool call')
+        function=item['function']
+        calls.append(ToolCall(id=str(item.get('id') or uuid.uuid4().hex),name=function.get('name',''),arguments=function.get('arguments',{})))
+    counts={k:value.get(v) if type(value.get(v))==int and value[v]>=0 else None for k,v in [('input_tokens','prompt_eval_count'),('output_tokens','eval_count')]}
+    timing={'model_seconds':round(time.monotonic()-started,3)}
+    if first_text is not None:timing['first_text_seconds']=round(first_text,3)
+    for name,field in [('load_seconds','load_duration'),('prompt_seconds','prompt_eval_duration'),('generation_seconds','eval_duration')]:
+        if type(value.get(field))==int and value[field]>=0:timing[name]=round(value[field]/1e9,3)
+    return AgentTurn(text=message.get('content') or '',calls=calls,usage=counts,timing=timing)
+
+
+
+def _wikipedia(client,query):
+    response=client.get('https://en.wikipedia.org/w/api.php',params={'action':'opensearch','search':query,'limit':5,'namespace':0,'format':'json'},headers={'User-Agent':'NinjaAssistant/0.1 (local user-requested research)'})
+    response.raise_for_status()
+    if len(response.content)>1000000:raise ValueError('Search response exceeds size limit')
+    value=response.json()
+    return {'provider':'Wikipedia','sources':[{'title':title,'url':url} for title,url in zip(value[1],value[3])]} if value[3] else None
+
+
+def _bing(client,query):
+    import xml.etree.ElementTree as ET
+    response=client.get('https://www.bing.com/search',params={'q':query,'format':'rss'},headers={'User-Agent':'NinjaAssistant/0.1 (local user-requested research)'})
+    response.raise_for_status()
+    if len(response.content)>1000000:raise ValueError('Search response exceeds size limit')
+    items=ET.fromstring(response.content).findall('./channel/item')
+    sources=[{'title':item.findtext('title') or 'Source','url':item.findtext('link'),'snippet':(item.findtext('description') or '')[:300]} for item in items if item.findtext('link')][:6]
+    return {'provider':'Bing RSS','sources':sources} if sources else None
+
+
+def search_sources(query,web_first=False):
+    """Bounded discovery. Topic lookups try Wikipedia first; current-events research (web_first) tries the web first."""
+    import xml.etree.ElementTree as ET
+    query=query.strip()
+    if not query or len(query)>200:raise ValueError('Use a short public research query')
+    with httpx.Client(timeout=15,follow_redirects=False,trust_env=False) as client:
+        for provider in ((_bing,_wikipedia) if web_first else (_wikipedia,_bing)):
+            try:
+                found=provider(client,query)
+                if found:return found
+            except (httpx.HTTPError,ET.ParseError,ValueError,IndexError,KeyError):pass
+    raise ValueError('Public search is unavailable. Supply an accessible public HTTPS source link and retry.')
+
+
+def _bing_news(client,query):
+    import xml.etree.ElementTree as ET
+    from urllib.parse import parse_qs,urlsplit
+    response=client.get('https://www.bing.com/news/search',params={'q':query,'format':'rss'},headers={'User-Agent':'NinjaAssistant/0.1 (local user-requested research)'})
+    response.raise_for_status()
+    if len(response.content)>1000000:raise ValueError('Search response exceeds size limit')
+    sources=[]
+    for item in ET.fromstring(response.content).findall('./channel/item'):
+        # News links are Bing click-throughs; the article address is in their url parameter.
+        target=(parse_qs(urlsplit(item.findtext('link') or '').query).get('url') or [''])[0]
+        if target.startswith('https://'):sources.append({'title':item.findtext('title') or 'Source','url':target,'snippet':(item.findtext('description') or '')[:400],'date':item.findtext('pubDate') or ''})
+    return {'provider':'Bing News RSS','sources':sources[:6]} if sources else None
+
+
+def web_search(query,news=False):
+    """Web results first; news=True asks Bing News for recent, dated articles."""
+    if not news:return search_sources(query,web_first=True)
+    import xml.etree.ElementTree as ET
+    with httpx.Client(timeout=15,follow_redirects=False,trust_env=False) as client:
+        try:
+            found=_bing_news(client,query.strip()[:200])
+            if found:return found
+        except (httpx.HTTPError,ET.ParseError,ValueError):pass
+    return search_sources(query,web_first=True)
+
+
+def private_reply(messages):
+    # Local inference only: no tools, archive, memory retrieval or token ledger.
+    from filelock import FileLock
+    from .config import DATA
+    from . import db
+    if db.stopped():raise ValueError('Emergency stop is active')
+    if len(db.encode(messages))>24000:raise ValueError('Private context exceeds 24,000 characters; clear the session')
+    model=local_model()
+    if not model:raise ValueError('Select an installed local model in Settings')
+    payload={'model':model,'messages':[{'role':'system','content':'You are Jarvis in a private conversation. No tools or external access are available. Never claim to save memories or perform actions.'},*messages],'stream':False,'think':False,'keep_alive':0,'options':{'num_predict':1024}}
+    try:
+        with FileLock(DATA/'model.lock',timeout=0),httpx.Client(trust_env=False,timeout=httpx.Timeout(120,connect=5)) as client:
+            response=client.post(ollama_url()+'/api/chat',json=payload);response.raise_for_status()
+            if len(response.content)>200000:raise ValueError('Private model response exceeds size limit')
+            value=response.json()
+    except httpx.HTTPError:raise ValueError('Local private reply failed; start Ollama or select an installed model') from None
+    text=value.get('message',{}).get('content','')
+    if not value.get('done') or not text.strip():raise ValueError('Local model returned no complete private reply')
+    return {'text':text,'usage':{'input_tokens':value.get('prompt_eval_count'),'output_tokens':value.get('eval_count')}}

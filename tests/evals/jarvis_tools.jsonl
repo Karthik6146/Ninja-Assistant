@@ -1,0 +1,52 @@
+{"text":"CMS kya hota hai? Simple example do.","expect":[]}
+{"text":"Hello Jarvis, kaise ho?","expect":[]}
+{"text":"What is the capital of Japan?","expect":[]}
+{"text":"Tell me a short joke in Hinglish","expect":[]}
+{"text":"मुझे motivation के लिए एक line बोलो","expect":[]}
+{"text":"Explain what an API is in one sentence","expect":[]}
+{"text":"Speak in English from now on","expect":[]}
+{"text":"Coin model is not answering","expect":[]}
+{"text":"वल्रेंट गेम का तमनेल जन्रेट करो","expect":[]}
+{"text":"Add a task: edit the Valorant short","expect":["assistant.add_task"]}
+{"text":"आज के tasks क्या हैं?","expect":["assistant.today"]}
+{"text":"What are my priorities today?","expect":["assistant.today"]}
+{"text":"Remind me tomorrow at 7 PM to check my upload queue","expect":["assistant.remind"]}
+{"text":"kal subah 9 baje yaad dilana ki thumbnail banana hai","expect":["assistant.remind"]}
+{"text":"Remember that I prefer short Hinglish answers","expect":["memory.remember"]}
+{"text":"What do you remember about my preferences?","expect":["memory.search","none"]}
+{"text":"Check CPU and memory usage","expect":["system.monitor"]}
+{"text":"मेरा computer slow चल रहा है, check करो क्या चल रहा है","expect":["system.monitor"]}
+{"text":"Open Calculator","expect":["app.open"]}
+{"text":"notepad kholo","expect":["app.open"]}
+{"text":"Search the latest news about GTA 6","expect":["research.deep","research.search"]}
+{"text":"Research the best microphones for YouTube under 5000 rupees","expect":["research.deep","research.search"]}
+{"text":"Read this page https://example.com and summarise it","expect":["research.fetch"]}
+{"text":"Valorant ka latest patch kya aaya, internet pe check karo","expect":["research.deep","research.search"]}
+{"text":"What's the weather in Noida today?","expect":["weather.now"]}
+{"text":"नोएडा का मौसम कैसा है?","expect":["weather.now"]}
+{"text":"Kal Delhi mein baarish hogi kya?","expect":["weather.now"]}
+{"text":"Find popular YouTube videos about Valorant tips","expect":["youtube.search"]}
+{"text":"YouTube pe Minecraft shorts ke trending videos dikhao","expect":["youtube.search"]}
+{"text":"What are people saying on Reddit about the RTX 5060?","expect":["research.deep","research.search"]}
+{"text":"Reddit pe best budget mic ke baare me log kya bol rahe hai?","expect":["research.deep","research.search"]}
+{"text":"List my video workflows","expect":["workflow.list"]}
+{"text":"Is YouTube link se 3 shorts banao: https://www.youtube.com/watch?v=hMg6-9QqPvI","expect":["workflow.draft"]}
+{"text":"Create a new video draft about Valorant tips","expect":["workflow.draft"]}
+{"text":"Show the files in D:\\Videos","expect":["file.list"]}
+{"text":"Read my notes file D:\\Notes\\ideas.txt","expect":["file.read"]}
+{"text":"Open Chrome","expect":["app.open"]}
+{"text":"VLC player kholo","expect":["app.open"]}
+{"text":"Open Bluetooth settings","expect":["app.open"]}
+{"text":"Open youtube.com","expect":["web.open"]}
+{"text":"Gaana pause karo","expect":["media.control"]}
+{"text":"Volume thoda badhao","expect":["media.control"]}
+{"text":"Next song lagao","expect":["media.control"]}
+{"text":"Find my Valorant clip in my videos","expect":["file.find"]}
+{"text":"Downloads folder mein resume wali PDF dhundo","expect":["file.find"]}
+{"text":"Any new emails, sir?", "expect":["gmail.list"]}
+{"text":"Mera mail check karo, kuch important aaya kya?", "expect":["gmail.list"]}
+{"text":"Did Amazon email me this week?", "expect":["gmail.list"]}
+{"text":"मेरे ईमेल देखो", "expect":["gmail.list"]}
+{"text":"Any WhatsApp messages?","expect":["whatsapp.recent"]}
+{"text":"Rahul ne WhatsApp pe kya bola?","expect":["whatsapp.recent"]}
+{"text":"कोई व्हाट्सएप मैसेज आया क्या?","expect":["whatsapp.recent"]}
