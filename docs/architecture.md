@@ -1,4 +1,4 @@
-> Historical baseline document. For the current workspace behavior, see [workspace guide](workspace-guide.md), [migration](workspace-migration.md) and [validation](workspace-validation.md). Built-in caption generation has been retired.
+> Historical baseline document. For the current workspace behavior, see [workspace guide](workspace-guide.md), migration and validation. Built-in caption generation has been retired.
 
 # Architecture and extensions
 

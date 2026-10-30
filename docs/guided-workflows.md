@@ -73,7 +73,7 @@ Stop the existing Ninja server/worker before changing its process environment. W
 
 ## Validation and references
 
-See [implementation plan and reference licenses](usability-plan.md). No upstream automation-platform code was copied. Existing local services remain separate.
+See implementation plan and reference licenses. No upstream automation-platform code was copied. Existing local services remain separate.
 
 Public upload checks use six mocked identities. Actual Google sign-in, quotas, scheduling and publication still require connected accounts. No external video was posted during validation.
 

@@ -1,4 +1,4 @@
-> Historical baseline document. For the current workspace behavior, see [workspace guide](workspace-guide.md), [migration](workspace-migration.md) and [validation](workspace-validation.md). Built-in caption generation has been retired.
+> Historical baseline document. For the current workspace behavior, see [workspace guide](workspace-guide.md), migration and validation. Built-in caption generation has been retired.
 
 # Official documentation checked
 
@@ -18,4 +18,4 @@ The cloud adapter supports the common chat-completions shape only. It does not c
 YouTube external APIs are implemented as documented in [YouTube automation](youtube-automation.md), with official Google documentation checked on 2026-10-04. Instagram/Threads external API adapters are not implemented. Their OAuth, scopes, quota costs, account eligibility and app-review rules must be checked in current official platform documentation when those features are implemented. No numerical quota/restriction claims are displayed in the current UI.
 
 
-The JARVIS foundation uses native Ollama tool calls, existing standalone ClipX CPU transcription and Windows SAPI. Public discovery uses Wikipedia with Bing RSS fallback; source fetches retain the existing pinned-IP HTTPS boundary. No browser-cloud voice, paid provider, new library or downloaded model is enabled. See [Jarvis guide](jarvis-guide.md) and [research/license inventory](jarvis-research.md).
+The JARVIS foundation uses native Ollama tool calls, existing standalone ClipX CPU transcription and Windows SAPI. Public discovery uses Wikipedia with Bing RSS fallback; source fetches retain the existing pinned-IP HTTPS boundary. No browser-cloud voice, paid provider, new library or downloaded model is enabled. See [Jarvis guide](jarvis-guide.md) and research/license inventory.

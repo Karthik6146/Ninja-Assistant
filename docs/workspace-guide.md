@@ -78,13 +78,13 @@ For a clean Windows setup install Python 3.11, Node 22+, FFmpeg/ffprobe and Git 
 
 If tasks stay queued, check Emergency stop and `data/worker.err.log`. For model errors, start Ollama and refresh Settings, then explicitly retry. For disabled final rendering, save, preview and approve the same revision. For source errors, use public HTTPS text/HTML URLs without redirects. Lock dashboard clears the current tab's stored token; it does not stop jobs.
 
-Back up `data` and `.env` privately. Do not share tokens, OAuth storage or model keys. See [migration notes](workspace-migration.md), [reference mapping](improvement-references.md) and [validation report](workspace-validation.md).
+Back up `data` and `.env` privately. Do not share tokens, OAuth storage or model keys. See migration notes, reference mapping and validation report.
 
 
 For multi-channel work, open **Automations > Profiles**. Create/edit named YouTube profiles there; **Video Studio > Create** opens the prompt. See [Channel profiles](channel-profiles-guide.md) for shared briefs, saved channel instructions and the live progress/preview window.
 
 
-Moved folder setup and validation: [Project relocation ? 12 October 2026](relocation-20261012.md).
+Moved folder setup and validation: Project relocation ? 12 October 2026.
 
 
 Recordings is now **Media Library**. See [Media library guide](media-library-guide.md) for thumbnails, organisation, filters, archive and video workflows.

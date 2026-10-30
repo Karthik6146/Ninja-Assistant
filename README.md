@@ -157,7 +157,7 @@ cd frontend; npm test; npm run build                       # frontend tests + bu
 - [x] Voice: streaming speech, live turn detection, wake word, talking over Jarvis
 - [x] Agent: tool-choice eval, honesty net, confirmation cards
 - [x] PC control, research, weather, Gmail, WhatsApp
-- [ ] YouTube management: dashboard, upload and schedule, comment replies ([design](docs/superpowers/specs/2026-10-30-youtube-management-design.md))
+- [ ] YouTube management: dashboard, upload and schedule, comment replies
 - [ ] Optional: move the real-time loop to Pipecat if latency needs to drop below about 1.5 s
 
 ## Limits

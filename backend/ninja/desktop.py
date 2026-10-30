@@ -177,7 +177,7 @@ def find_files(query,kind='any'):
             except OSError:continue
             for entry in entries:
                 seen+=1
-                # ponytail: bounded name walk (40k entries / 4 s); an indexed search is the upgrade if folders grow large.
+                # Trade-off: bounded name walk (40k entries / 4 s); an indexed search is the upgrade if folders grow large.
                 if seen>40000 or time.monotonic()-started>4:truncated=True;break
                 if hidden(entry):continue
                 if entry.is_dir(follow_symlinks=False):

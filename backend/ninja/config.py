@@ -21,7 +21,7 @@ if not TOKEN:
 
 # Browser sessions get a random id in the cookie, never the master token: cookies reach every
 # loopback port, and a lock/logout must be able to revoke them.
-# ponytail: in-memory, so restarting the server signs browsers out until the page reloads.
+# Trade-off: in-memory, so restarting the server signs browsers out until the page reloads.
 SESSIONS: dict[str, float] = {}
 
 

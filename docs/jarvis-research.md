@@ -1,6 +1,6 @@
 ﻿# JARVIS research and integration decisions
 
-Researched 2026-10-13 using current official documentation, repository source and selected LICENSE files. Read with [spec](jarvis-spec.md) and [implementation plan](superpowers/plans/2026-10-13-jarvis-assistant.md).
+Researched 2026-10-13 using current official documentation, repository source and selected LICENSE files. Read with [spec](jarvis-spec.md).
 
 ## Findings that determine the design
 

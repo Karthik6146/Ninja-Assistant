@@ -1,6 +1,6 @@
 # Jarvis assistant user guide
 
-Updated 2026-10-14. Jarvis is Ninja's local conversational assistant: ask general questions, continue a conversation, or request supported tools. The companion and one-button voice upgrade are installed; [voice validation](voice-ease-validation.md) records checks and measured limits.
+Updated 2026-10-14. Jarvis is Ninja's local conversational assistant: ask general questions, continue a conversation, or request supported tools. The companion and one-button voice upgrade are installed; voice validation records checks and measured limits.
 
 ## Open and use it
 
@@ -129,7 +129,7 @@ Start the live assistant with `scripts/start.ps1`; it starts both worker lanes. 
 
 Backend regressions, frontend build/tests and independent runtime/browser review cover scope binding, revision checks, replay, cancellation, memory correction, consent, private clearing, narrow screens and voice lifecycle. Public publishing is mocked in tests; no test video was published.
 
-Real Qwen successfully invoked the task tool; real local SAPI audio → browser-style WebM → ClipX returned the expected English sentence. Timing measurements and screenshots are in [validation](jarvis-validation.md). Companion design choices, source links and voice limitations are cached in [companion research](jarvis-companion-research.md).
+Real Qwen successfully invoked the task tool; real local SAPI audio → browser-style WebM → ClipX returned the expected English sentence. Timing measurements and screenshots are in validation. Companion design choices, source links and voice limitations are cached in companion research.
 
 Supported desktop launchers are Notepad, Calculator and Explorer under an active unlocked Windows session. Full browser/UI Automation control, wake word, device integrations, sensitive-memory storage, semantic recall and arbitrary software analysis are later slices requiring named targets and separate verification. Source fetching supports bounded public HTTPS text/HTML; redirects, login-required content and arbitrary downloads/executables are not followed.
 

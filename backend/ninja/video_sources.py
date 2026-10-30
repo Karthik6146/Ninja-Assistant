@@ -125,7 +125,7 @@ def evidence(path,folder,job,metadata):
 def select_candidates(duration,words,cuts,speech,count,seconds):
     if duration<30:return []
     length=min(seconds,duration);starts={0.0,*[round(t,3) for t in cuts+speech if 0<=t<=duration-30],*[float(t) for t in range(0,int(duration-length)+1,max(30,int(length)))]}
-    # ponytail: deterministic evidence pool, cap at 2000 starts for long recordings.
+    # Trade-off: deterministic evidence pool, cap at 2000 starts for long recordings.
     pool=[]
     for start in sorted(starts)[:2000]:
         near=[w['start'] for w in words if start<=w['start']<=start+2]

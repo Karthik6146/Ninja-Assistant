@@ -3,7 +3,7 @@
 Status: working assistant foundation implemented and independently reviewed; broader capabilities remain planned. Updated 2026-10-13.
 See the [implemented user guide](jarvis-guide.md) and [validation evidence](jarvis-validation.md) for the actual release boundary. This specification describes the full target, including unimplemented extensions.
 Working assistant name: Jarvis. Extend Ninja; preserve its projects, channel identities, publishing policies, caption tool and user configuration.
-Read with [implementation plan](superpowers/plans/2026-10-13-jarvis-assistant.md) and [research and licenses](jarvis-research.md).
+Read with [research and licenses](jarvis-research.md).
 
 ## Accepted choices and scope
 

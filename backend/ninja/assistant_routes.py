@@ -21,7 +21,7 @@ async def stream(id:str,request:FastAPIRequest):
     await asyncio.to_thread(agent.get,id)
     async def events():
         previous=None;started=asyncio.get_running_loop().time()
-        # ponytail: 100 ms server-side check of one row; switch to change notifications if many clients stream.
+        # Trade-off: 100 ms server-side check of one row; switch to change notifications if many clients stream.
         while not await request.is_disconnected() and asyncio.get_running_loop().time()-started<agent.MAX_SECONDS+30:
             value=await asyncio.to_thread(agent.get,id);encoded=db.encode(value)
             if encoded!=previous:yield 'data: '+encoded+'\n\n';previous=encoded
