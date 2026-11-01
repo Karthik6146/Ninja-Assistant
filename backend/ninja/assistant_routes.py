@@ -1,4 +1,5 @@
 """Authenticated local assistant endpoints; scopes select server-authorized targets."""
+import os
 from fastapi import APIRouter,Request as FastAPIRequest
 from typing import Literal
 from pydantic import Field
@@ -6,6 +7,44 @@ from . import agent,db,permissions,tools
 from .agent_models import Request,Instruction,Strict
 from . import assistant_tools
 router=APIRouter(prefix='/api/assistant')
+
+class ModelChoice(Strict):
+    provider:Literal['ollama','cloud']
+    model:str=Field(default='',max_length=200)
+
+@router.get('/models')
+def models():
+    """What the composer's model picker offers: installed Ollama models and the .env cloud model, if configured."""
+    from . import adapters
+    from urllib.parse import urlsplit
+    return {'provider':adapters.chat_provider(),'model':adapters.chat_model(),'local':adapters.provider_status()[0]['models'],
+            'cloud':{'model':os.getenv('CLOUD_MODEL',''),'host':urlsplit(os.getenv('CLOUD_URL','')).hostname or '','ready':adapters.cloud_ready()}}
+
+@router.put('/models')
+def choose_model(body:ModelChoice):
+    from . import adapters
+    if body.provider=='cloud' and not adapters.cloud_ready():raise ValueError('Cloud API is not set up. Add CLOUD_ENABLED=true, CLOUD_URL, CLOUD_MODEL and CLOUD_API_KEY to .env')
+    if body.provider=='ollama' and body.model not in adapters.provider_status()[0]['models']:raise ValueError('Choose an installed Ollama model')
+    with db.connect() as c:
+        c.execute("INSERT OR REPLACE INTO preferences VALUES('chat_provider',?)",(body.provider,))
+        if body.provider=='ollama':c.execute("INSERT OR REPLACE INTO preferences VALUES('ollama_model',?)",(body.model,))
+    return models()
+
+@router.get('/usage')
+def usage():
+    """Local Qwen tokens per day (last 30) and per month (last 12), local time; empty periods are zero."""
+    import datetime
+    today=datetime.date.today()
+    days=[(today-datetime.timedelta(days=n)).isoformat() for n in range(29,-1,-1)]
+    months=[f'{(today.year*12+today.month-1-n)//12}-{(today.month-1-n)%12+1:02d}' for n in range(11,-1,-1)]
+    with db.connect() as c:
+        rows=c.execute("SELECT strftime('%Y-%m-%d',reported,'unixepoch','localtime') AS day,SUM(COALESCE(input_tokens,0)) AS input,SUM(COALESCE(output_tokens,0)) AS output FROM chat_usage WHERE day>=? GROUP BY day",(months[0]+'-01',)).fetchall()
+    def group(keys,width):
+        totals={k:{'period':k,'input':0,'output':0} for k in keys}
+        for r in rows:
+            if r['day'][:width] in totals:totals[r['day'][:width]]['input']+=r['input'];totals[r['day'][:width]]['output']+=r['output']
+        return list(totals.values())
+    return {'day':group(days,10),'month':group(months,7)}
 
 @router.get('/tasks')
 def listing():return agent.listing()
@@ -127,6 +166,14 @@ async def live_voice(websocket:WebSocket):
     except (WebSocketDisconnect,RuntimeError):pass
     finally:
         engine.detach(sink);task.cancel()
+
+@router.post('/warm')
+def warm_chat():
+    """Opening Jarvis preloads the local chat model in the background, so the first typed reply skips the ~9 s load."""
+    import threading
+    from . import adapters
+    if adapters.chat_provider()=='ollama':threading.Thread(target=adapters.warm_local_model,daemon=True).start()
+    return {'warming':adapters.chat_provider()=='ollama'}
 
 @router.post('/voice/warm')
 def warm():

@@ -73,3 +73,8 @@
 {"text":"Play the trailer of Avengers on YouTube","expect":["media.play"]}
 {"text":"Open Spotify app","expect":["app.open"]}
 {"text":"Hi","expect":[]}
+{"text":"what is repo rate","expect":[]}
+{"text":"What is inflation? Explain simply.","expect":[]}
+{"text":"GST kya hota hai?","expect":[]}
+{"text":"What is the current repo rate?","expect":["research.deep"]}
+{"text":"Aaj ka repo rate kitna hai?","expect":["research.deep"]}

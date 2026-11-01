@@ -27,3 +27,11 @@ it('sends on Enter but not Shift+Enter or while a Hindi IME is composing',()=>{
 });
 
 it('greets by time of day',()=>{expect(greeting(2)).toBe('Working late');expect(greeting(9)).toBe('Good morning');expect(greeting(14)).toBe('Good afternoon');expect(greeting(20)).toBe('Good evening')});
+
+import {replyNotice} from './AssistantConsole';
+describe('replyNotice',()=>{
+ it('splits the verification notice from the reply text',()=>{
+  expect(replyNotice('No tool action was verified for this reply.\n\nOpened Spotify.')).toEqual({notice:'No tool action was verified for this reply.',body:'Opened Spotify.'});
+  expect(replyNotice('Done, sir.')).toEqual({notice:'',body:'Done, sir.'});
+ });
+});

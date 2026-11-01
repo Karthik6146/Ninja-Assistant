@@ -35,9 +35,11 @@ def main():
         request={'response_mode':'companion','spoken':args.spoken,'language':'en'}
         action=agent.action_requested(case['text']);direct=args.spoken and not action and agent.simple_spoken_question(case['text'])
         messages=[{'role':'system','content':agent.system_prompt(request,True,direct)},{'role':'user','content':agent.first_message(case['text'],[])+' (Local time: 2026-10-28 18:00, Wednesday.)'+agent.turn_note(request,True)}]
-        started=time.monotonic();calls,text=turn(messages,[] if direct else schemas,args.model);first=calls
+        offline=not action and agent.simple_spoken_question(case['text'])
+        offered=[] if offline else schemas
+        started=time.monotonic();calls,text=turn(messages,[] if direct else offered,args.model);first=calls
         if not calls and not direct and (action or agent.claims_action(text)):
-            calls,_=turn(messages+[{'role':'assistant','content':text},{'role':'user','content':agent.RECOVERY}],schemas,args.model)
+            calls,_=turn(messages+[{'role':'assistant','content':text},{'role':'user','content':agent.RECOVERY}],offered,args.model)
         # Same backstops as agent.execute: short media commands and changing-fact questions run their tool anyway.
         if not calls and not first and agent.media_command(case['text']):calls=['media.control']
         if not calls and not first and not action and agent.current_question(case['text']):calls=['research.deep']

@@ -20,8 +20,8 @@
 .jumpLatest{position:sticky;bottom:6px;display:flex;margin:0 auto;border-radius:999px;padding:6px 14px;font-size:12px;box-shadow:0 4px 16px #0008;animation:turnIn .2s ease-out both}
 .composer{display:flex;align-items:flex-end;gap:8px;padding:6px 6px 6px 16px;border:1px solid var(--line);border-radius:24px;background:#17181f;transition:border-color .2s,box-shadow .2s}
 .composer:focus-within{border-color:#d1c6ff99;box-shadow:0 0 0 3px #d1c6ff26}
-.jarvisConsole .composer textarea{flex:1;min-height:0;max-height:200px;field-sizing:content;resize:none;border:0;background:transparent;padding:9px 0;font-size:14px;line-height:1.5}
-.jarvisConsole .composer textarea:focus-visible{outline:none}
+.composer textarea{flex:1;min-height:0;max-height:200px;field-sizing:content;resize:none;border:0;background:transparent;padding:9px 0;font-size:14px;line-height:1.5}
+.composer textarea:focus-visible{outline:none}
 .sendButton{flex:none;width:40px;height:40px;padding:0;border-radius:50%;justify-content:center;font-size:15px}
 .sendButton:not(:disabled):hover{transform:scale(1.06)}.sendButton:not(:disabled):active{transform:scale(.94)}
 .composerHint{display:block;margin:6px 4px 0;color:var(--muted)}

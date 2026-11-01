@@ -22,6 +22,62 @@ def local_model():
         row=c.execute("SELECT value FROM preferences WHERE key='ollama_model'").fetchone()
     return row[0] if row else os.getenv('OLLAMA_MODEL','')
 
+def cloud_ready():
+    return os.getenv('CLOUD_ENABLED')=='true' and bool(os.getenv('CLOUD_API_KEY')) and os.getenv('CLOUD_URL','').startswith('https://') and bool(os.getenv('CLOUD_MODEL'))
+
+def chat_provider():
+    """'cloud' only while the user picked it and .env still configures it; otherwise the local model."""
+    from . import db
+    with db.connect() as c:
+        row=c.execute("SELECT value FROM preferences WHERE key='chat_provider'").fetchone()
+    return 'cloud' if row and row[0]=='cloud' and cloud_ready() else 'ollama'
+
+def chat_model():
+    return os.getenv('CLOUD_MODEL','') if chat_provider()=='cloud' else local_model()
+
+def openai_messages(messages):
+    """Ollama-style history to OpenAI chat format: tool calls get ids, tool results point at them,
+    and tool names swap '.' for '__' (OpenAI names allow only letters, digits, _ and -)."""
+    out=[];waiting=[];owner=None
+    def close():
+        # Calls that never got a result (a declined or cut-off batch) must not reach the API unanswered.
+        if waiting and owner:
+            owner['tool_calls']=[c for c in owner['tool_calls'] if c['id'] not in waiting]
+            if not owner['tool_calls']:del owner['tool_calls'];owner['content']=owner['content'] or ''
+        waiting.clear()
+    for m in messages:
+        if m.get('role')=='tool':
+            if waiting:out.append({'role':'tool','tool_call_id':waiting.pop(0),'content':m.get('content','')})
+            else:out.append({'role':'user','content':'Result of '+str(m.get('tool_name','a tool'))+': '+str(m.get('content',''))})
+            continue
+        close()
+        if m.get('role')=='assistant' and m.get('tool_calls'):
+            calls=[{'id':f'call_{len(out)}_{i}','type':'function','function':{'name':c['function']['name'].replace('.','__'),'arguments':json.dumps(c['function'].get('arguments',{}))}} for i,c in enumerate(m['tool_calls'])]
+            owner={'role':'assistant','content':m.get('content') or None,'tool_calls':calls};out.append(owner);waiting.extend(c['id'] for c in calls)
+        else:out.append({'role':m['role'],'content':m.get('content','')})
+    close()
+    return out
+
+def cloud_turn(messages,schemas,max_tokens):
+    """One tool turn on the OpenAI-compatible cloud API from .env; the conversation and tool results leave this PC."""
+    from .agent_models import AgentTurn,ToolCall
+    import time,uuid
+    tools=[{**t,'function':{**t['function'],'name':t['function']['name'].replace('.','__')}} for t in schemas]
+    body={'model':os.environ['CLOUD_MODEL'],'messages':openai_messages(messages),'max_tokens':max_tokens,'temperature':0,**({'tools':tools} if tools else {})}
+    started=time.monotonic()
+    try:
+        response=httpx.post(os.environ['CLOUD_URL'].rstrip('/')+'/chat/completions',headers={'Authorization':'Bearer '+os.environ['CLOUD_API_KEY']},json=body,timeout=120)
+        response.raise_for_status();value=response.json();message=value['choices'][0]['message']
+    except (httpx.HTTPError,ValueError,KeyError,IndexError,TypeError):raise ValueError('Cloud model request failed. Check CLOUD_URL, CLOUD_MODEL and the API key in .env, or switch back to the local model') from None
+    calls=[]
+    for item in (message.get('tool_calls') or [])[:12]:
+        try:arguments=json.loads(item['function'].get('arguments') or '{}')
+        except json.JSONDecodeError:arguments={}
+        calls.append(ToolCall(id=str(item.get('id') or uuid.uuid4().hex),name=item['function']['name'].replace('__','.'),arguments=arguments if isinstance(arguments,dict) else {}))
+    usage=value.get('usage') or {}
+    counts={k:usage.get(v) if type(usage.get(v))==int else None for k,v in [('input_tokens','prompt_tokens'),('output_tokens','completion_tokens')]}
+    return AgentTurn(text=(message.get('content') or '')[:12000],calls=calls,usage=counts,timing={'model_seconds':round(time.monotonic()-started,3)})
+
 def unload_local_models():
     """Caller holds model.lock while handing the GPU to a local media service."""
     try:
@@ -78,7 +134,7 @@ def provider_status():
         local['available']=selected in local['models']
         local['message']='Ready' if local['available'] else 'Choose an installed model in Settings.'
     except (httpx.HTTPError,ValueError,KeyError):pass
-    enabled=os.getenv('CLOUD_ENABLED')=='true' and bool(os.getenv('CLOUD_API_KEY') and os.getenv('CLOUD_URL','').startswith('https://') and os.getenv('CLOUD_MODEL'))
+    enabled=cloud_ready()
     return [local,{'id':'cloud','name':'Cloud API','scope':'external','model':os.getenv('CLOUD_MODEL',''),'models':[os.getenv('CLOUD_MODEL')] if enabled else [],'available':enabled,'message':'Configured; availability verified on request. Explicit sharing consent required.' if enabled else 'Disabled. Configure CLOUD_ENABLED, URL, model and API key in .env.'}]
 
 
@@ -234,6 +290,10 @@ def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048, retried
     if db.cancelled(job):raise media.Cancelled()
     if len(db.encode(messages))+len(db.encode(schemas))>70000:raise ValueError('Assistant context is too large; narrow the request')
     if not 128<=max_tokens<=2048:raise ValueError('Invalid assistant response limit')
+    if chat_provider()=='cloud':
+        answer=cloud_turn(messages,schemas,max_tokens)
+        if on_text and answer.text:on_text(answer.text)
+        return answer
     model=local_model()
     if not model:raise ValueError('Select an installed Ollama model in Settings')
     body={'model':model,'messages':messages,'tools':schemas,'stream':on_text is not None,'think':False,'keep_alive':-1,'options':{'num_predict':max_tokens,'num_ctx':8192,'temperature':0}}

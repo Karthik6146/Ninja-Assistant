@@ -155,7 +155,7 @@ def usage(job):
         reports=[json.loads(r[0]).get('usage',{}) for r in rows]
         def total(key):
             return sum(v[key] for v in reports) if reports and all(type(v.get(key))==int for v in reports) else None
-        c.execute('INSERT OR REPLACE INTO chat_usage VALUES(?,?,?,?,?,?)',(job,'ollama',adapters.local_model(),total('input_tokens'),total('output_tokens'),time.time()))
+        c.execute('INSERT OR REPLACE INTO chat_usage VALUES(?,?,?,?,?,?)',(job,adapters.chat_provider(),adapters.chat_model(),total('input_tokens'),total('output_tokens'),time.time()))
 
 def execute(id,job,attempt):
     from . import assistant_tools
@@ -170,6 +170,10 @@ def execute(id,job,attempt):
     lookup=companion and not action_requested(latest) and current_question(latest)
     action_needed=not companion or action_requested(latest) or lookup
     direct_voice=companion and task['request'].get('spoken') and not action_needed and simple_spoken_question(latest)
+    # Typed definitions ("what is repo rate") were web-searched: ~20 s instead of ~2 s. Same test as the voice
+    # shortcut, so they get no tools; hiding only the web tools made Qwen save a note instead, and a prompt rule
+    # for this broke "Remember that…" in voice evals.
+    offline=companion and not action_needed and simple_spoken_question(latest)
     preview_at=0.0
     def preview(text):
         nonlocal preview_at
@@ -219,7 +223,7 @@ def execute(id,job,attempt):
                 messages=[{'role':'system','content':system}]+history[:last]+evidence+latest_turn+history[last+1:]
                 # No live draft when a tool is clearly needed: a first attempt that answers in words ("I cannot see
                 # your screen") was spoken before the retry called the tool.
-                answer=adapters.agent_turn(messages,[] if direct_voice else schemas(context),job=job,**({'on_text':None if action_needed else preview,'max_tokens':384 if task['request'].get('spoken') else 1024} if companion else {}))
+                answer=adapters.agent_turn(messages,[] if direct_voice or offline else schemas(context),job=job,**({'on_text':None if action_needed else preview,'max_tokens':384 if task['request'].get('spoken') else 1024} if companion else {}))
                 if direct_voice and answer.calls:raise ValueError('This informational turn cannot execute tools. Ask for the action in a separate message.')
             except Timeout:
                 task['active_seconds']+=time.monotonic()-started
@@ -233,6 +237,9 @@ def execute(id,job,attempt):
         task['preview']=''
         if answer.timing:
             task['timing']={**answer.timing,'model_seconds':round(task.get('timing',{}).get('model_seconds',0)+answer.timing.get('model_seconds',0),3)}
+        if type(answer.usage.get('input_tokens'))==int:
+            # Shown in the chat bar: how full the latest prompt was (of num_ctx) and the conversation's running total.
+            task['tokens']={'context':answer.usage['input_tokens'],'total':task.get('tokens',{}).get('total',0)+answer.usage['input_tokens']+(answer.usage.get('output_tokens') or 0)}
         if lookup and not answer.calls and not task['calls'] and task['turns']==0:
             # Qwen answers changing facts from stale memory even when told not to; search for it, then let it answer from the results.
             answer=answer.model_copy(update={'text':'','calls':[ToolCall(id='lookup',name='research.deep',arguments={'query':latest[:200],'recent':True})]})
@@ -257,6 +264,10 @@ def execute(id,job,attempt):
                 with db.connect() as c:old=c.execute('SELECT * FROM agent_steps WHERE task=? AND step=?',(id,step)).fetchone()
                 if old and json.loads(old['payload'])!=call.model_dump():raise ValueError('Stored tool inputs changed; execution paused')
                 if old and old['state']=='completed':result=json.loads(old['result']);note(task,call.name,result)
+                elif offline:
+                    # Qwen copies tool calls from earlier turns even when offered none ("what is meta data" searched
+                    # twice, 14 s); a definition is answered from its own knowledge instead.
+                    result={'error':'No tool needed: answer this from your own knowledge, briefly.','verified':False}
                 else:
                     tool=tools.REGISTRY.get(call.name)
                     if old and old['state']=='running' and (not tool or not tool.replay_safe):raise ValueError('An interrupted action has unknown outcome. Inspect its result before retrying')
@@ -400,7 +411,7 @@ def current_question(text):
     if re.search(r'\b(?:my|mera|meri|mere)\b',text):return False
     # Only an actual question or request: "So that is happening right now" is a comment, and was searched word for word.
     if not (text.endswith('?') or re.match(r"(?:who|what|what's|when|which|where|how|is|are|did|does|tell|give|kaun|kya|kab|kitna|kitne|aaj|today'?s)\b",text) or re.search(r'\b(?:batao|bataiye)\b',text)):return False
-    return bool(re.search(r"\b(?:who won|winners?|kaun jeet\w*|jeeta|latest|last|recent|news|right now|currently|scores?|results?|prices?|cost|released?|launch(?:ed)?)\b|\bwho is the (?:ceo|president|prime minister|pm|captain|chief|head|owner)\b",text))
+    return bool(re.search(r"\b(?:who won|winners?|kaun jeet\w*|jeeta|latest|last|recent|news|right now|current(?! time| date| day)|currently|scores?|results?|prices?|cost|released?|launch(?:ed)?)\b|\b(?:aaj|today'?s?|abhi)\b.*\b(?:rates?|bhav|daam)\b|\bwho is the (?:ceo|president|prime minister|pm|captain|chief|head|owner)\b",text))
 
 def claims_action(text):
     # A reply that names a tool or says it is generating, without a call, is narration, not action.

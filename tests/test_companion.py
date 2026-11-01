@@ -325,3 +325,22 @@ def test_invented_song_resumes_but_named_song_plays():
     assert agent.grounded(call('popular music'),['Play music for me']).name=='media.control'
     assert agent.grounded(call('Mine'),['Play the music name, Mine','Play it for me']).name=='media.play'
     assert agent.grounded(call('biryani recipe'),['YouTube pe biryani recipe chalao']).name=='media.play'
+
+
+def test_definitions_skip_web_tools_but_current_values_search():
+    offline=lambda q:not agent.action_requested(q) and agent.simple_spoken_question(q)
+    assert offline('what is repo rate') and offline('GST kya hota hai?')
+    assert not offline('What is the current repo rate?') and agent.current_question('What is the current repo rate?')
+    assert agent.current_question('Aaj ka repo rate kitna hai?') and not agent.current_question('Aaj kitne baje meeting hai?')
+    assert not agent.current_question('what is the current time')
+
+
+def test_definition_runs_no_tool_even_when_qwen_calls_one(monkeypatch):
+    offered=[];answers=iter([AgentTurn(calls=[ToolCall(id='x',name='research.deep',arguments={'query':'meta data'})]),AgentTurn(text='Metadata is data about data.')])
+    def answer(messages,schemas,*a,**kw):
+        offered.append({s['function']['name'] for s in schemas});return next(answers)
+    monkeypatch.setattr(adapters,'agent_turn',answer)
+    monkeypatch.setattr(agent,'run_tool',lambda *a,**kw:pytest.fail('a definition must not run a tool'))
+    created=companion('what is meta data');run();value=agent.get(created['task'])
+    assert offered[0]==set()
+    assert value['reply']=='Metadata is data about data.' and value['failed_actions'] is False
