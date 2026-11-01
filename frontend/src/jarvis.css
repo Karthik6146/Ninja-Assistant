@@ -114,8 +114,10 @@
 .confirmCard strong{overflow-wrap:anywhere}
 .confirmCard small{color:var(--muted)}
 @media(max-width:560px){.confirmCard{flex-wrap:wrap}.confirmCard>div{flex-basis:calc(100% - 32px)}}
-.modelPicker{position:relative;flex:none}
-.modelButton{display:flex;align-items:center;gap:7px;min-height:36px;padding:4px 10px 4px 12px;font-size:12px;color:var(--muted);background:transparent;border:1px solid transparent;border-radius:999px;max-width:180px;white-space:nowrap}
+.modelPicker{position:relative;flex:0 1 auto;min-width:0}
+.modelButton{display:flex;align-items:center;gap:7px;min-height:36px;padding:4px 10px 4px 12px;font-size:12px;color:var(--muted);background:transparent;border:1px solid transparent;border-radius:999px;max-width:220px;min-width:0;white-space:nowrap}
+.modelName{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.modelButton .icon{flex:none}
 .modelButton:hover,.modelButton[aria-expanded=true]{border-color:var(--line-strong);color:var(--text);background:var(--surface-2)}
 .modelButton.bad{border-color:var(--danger)}
 .modelButton .icon:last-child{transform:rotate(-90deg);opacity:.7}
@@ -131,7 +133,7 @@
 .modelMenu button small{font-size:11px;color:var(--muted)}
 .modelMenu button .icon{color:var(--accent);flex:none}
 .modelEmpty{display:block;padding:4px 10px 8px;font-size:12px;color:var(--muted)}
-@media(max-width:560px){.modelButton{max-width:120px;overflow:hidden;text-overflow:ellipsis}}
+@media(max-width:560px){.modelButton{max-width:140px}}
 @media(prefers-reduced-motion:reduce){.modelMenu{animation:none}}
 
 /* Chat window, 2026 pass: Jarvis speaks in plain text (no bubble), you in a soft bubble on the right;
@@ -152,5 +154,40 @@
 .jarvis .composer{flex-direction:column;align-items:stretch;gap:4px;padding:12px 10px 8px 16px;border-radius:20px}
 .jarvis .composer textarea{padding:2px 4px 2px 0;min-height:24px}
 .composerBar{display:flex;align-items:center;gap:8px}
-.composerBar .modelPicker{margin-right:auto;margin-left:-8px}
+.composerBar .modelPicker{margin-right:auto}
+.composerBar{min-width:0}
 .jarvis .composerHint{text-align:center}
+
+/* Chat markdown: Tailwind's reset strips list markers and heading sizes, so replies need their own reading styles.
+   Code blocks follow an editor look (Claude Code): label + Copy bar, monospace, sideways scroll. */
+.chatMarkdown{--mono:"Cascadia Code","Cascadia Mono",Consolas,"Courier New",monospace;min-width:0}
+.chatMarkdown>*:first-child{margin-top:0}
+.chatMarkdown :is(h1,h2,h3,h4){margin:1.1em 0 .45em;line-height:1.35;color:var(--text);font-weight:650}
+.chatMarkdown h1{font-size:19px}.chatMarkdown h2{font-size:17px}.chatMarkdown :is(h3,h4){font-size:15.5px}
+.chatMarkdown :is(ul,ol){margin:.4em 0 .8em;padding-left:1.4em}
+.chatMarkdown ul{list-style:disc}.chatMarkdown ol{list-style:decimal}
+.chatMarkdown li{margin:.25em 0;padding-left:.2em}.chatMarkdown li::marker{color:var(--faint)}
+.chatMarkdown li>:is(ul,ol){margin:.2em 0}
+.chatMarkdown hr{border:0;border-top:1px solid var(--line);margin:1em 0}
+.chatMarkdown blockquote{margin:.6em 0;padding:2px 0 2px 14px;border-left:3px solid var(--line-strong);color:var(--muted)}
+.chatMarkdown strong{font-weight:650;color:var(--text)}
+.chatMarkdown :not(pre)>code{font-family:var(--mono);font-size:.88em;padding:1px 6px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);color:var(--accent-strong);overflow-wrap:anywhere}
+.codeBlock{margin:.7em 0 1em;border:1px solid var(--line-strong);border-radius:10px;background:#070c12;overflow:hidden}
+.codeBlock figcaption{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 6px 5px 12px;border-bottom:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--muted)}
+.codeBlock figcaption button{min-height:26px;padding:2px 10px;font-size:12px;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--muted)}
+.codeBlock figcaption button:hover{border-color:var(--line-strong);color:var(--text);background:var(--surface-2)}
+.codeBlock pre{margin:0;padding:12px 14px;overflow-x:auto;white-space:pre;overflow-wrap:normal;font-family:var(--mono);font-size:13px;line-height:1.6;color:#d6e2ee;tab-size:4;scrollbar-width:thin}
+.codeBlock pre code{font:inherit;color:inherit;background:none;border:0;padding:0}
+
+/* Chat tables: framed, header row, row dividers, sideways scroll for wide data; numbers line up. */
+.markdownTable{margin:.7em 0 1em;max-width:100%;overflow-x:auto;border:1px solid var(--line-strong);border-radius:10px;scrollbar-width:thin}
+.markdownTable:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.markdownTable table{width:100%;border-collapse:collapse;font-size:13.5px;line-height:1.45;font-variant-numeric:tabular-nums}
+.markdownTable th{position:sticky;top:0;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.02em;text-align:left;white-space:nowrap}
+.markdownTable :is(th,td){padding:8px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.markdownTable td{color:var(--text)}
+.markdownTable tbody tr:last-child td{border-bottom:0}
+.markdownTable tbody tr:nth-child(even){background:#ffffff05}
+.markdownTable tbody tr:hover{background:var(--accent-soft)}
+.markdownTable :is(th,td)[style*="right"]{text-align:right}
+.markdownTable :is(th,td)[style*="center"]{text-align:center}

@@ -3,6 +3,8 @@ import {API} from './TaskPanel';
 import Icon from './Icons';
 
 export type Models={provider:'ollama'|'cloud';model:string;local:string[];cloud:{model:string;host:string;ready:boolean}};
+// 'huihui_ai/qwen3.5-abliterated:4b' shows as 'qwen3.5-abliterated:4b'; the menu keeps the full name.
+export const shortName=(model:string)=>model.split('/').pop()||model;
 type Choice={provider:'ollama'|'cloud';model:string};
 
 // Composer model picker: installed Ollama models, plus the .env cloud model when it is set up.
@@ -22,8 +24,8 @@ export default function ModelPicker({api,onChange}:{api:API;onChange?:(m:Models)
  const item=(c:Choice,label:string,note:string)=>{const on=models.provider===c.provider&&(c.provider==='cloud'||models.model===c.model);
   return <button type="button" role="menuitemradio" aria-checked={on} key={c.provider+c.model} onClick={()=>choose(c)}><span><strong>{label}</strong><small>{note}</small></span>{on&&<Icon name="check" size={14}/>}</button>};
  return <div className="modelPicker" ref={box}>
-  <button type="button" className={'modelButton'+(error?' bad':'')} aria-haspopup="menu" aria-expanded={open} title={error||'Choose the model Jarvis uses'} onClick={()=>setOpen(v=>!v)}>
-   <span className={'modelDot '+models.provider} aria-hidden="true"/>{models.model||'Choose model'}<Icon name="chevron" size={12}/>
+  <button type="button" className={'modelButton'+(error?' bad':'')} aria-haspopup="menu" aria-expanded={open} title={error||(models.model?models.model+' · ':'')+'Choose the model Jarvis uses'} onClick={()=>setOpen(v=>!v)}>
+   <span className={'modelDot '+models.provider} aria-hidden="true"/><span className="modelName">{shortName(models.model)||'Choose model'}</span><Icon name="chevron" size={12}/>
   </button>
   {open&&<div className="modelMenu" role="menu" aria-label="Model">
    <p>On this PC</p>
