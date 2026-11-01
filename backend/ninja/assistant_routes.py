@@ -97,7 +97,7 @@ async def live_voice(websocket:WebSocket):
     try:engine=await asyncio.to_thread(listener.shared)
     except ValueError as error:
         await websocket.send_json({'type':'error','message':str(error)});await websocket.close();return
-    loop=asyncio.get_running_loop();events=asyncio.Queue();language={'value':'hinglish'}
+    loop=asyncio.get_running_loop();events=asyncio.Queue();language={'value':'auto'}  # recognition auto-detects English or Hindi; the reply language is per conversation
     def sink(event):loop.call_soon_threadsafe(events.put_nowait,event)
     async def forward():
         while True:
@@ -123,7 +123,6 @@ async def live_voice(websocket:WebSocket):
             elif message.get('text'):
                 mode=json.loads(message['text'])
                 if not isinstance(mode,dict):continue
-                if mode.get('language') in ('auto','en','hi','hinglish'):language['value']='auto' if mode['language']=='auto' else 'hinglish'
                 await asyncio.to_thread(engine.mode,mode.get('standby') is True)
     except (WebSocketDisconnect,RuntimeError):pass
     finally:

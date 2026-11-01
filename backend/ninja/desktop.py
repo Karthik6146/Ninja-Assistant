@@ -4,7 +4,7 @@ No shell fallback and no arbitrary command execution: apps open only from the St
 allowlisted document/media type inside the owner's personal folders.
 """
 import difflib,json,os,re,subprocess,time
-from datetime import datetime
+from datetime import datetime,timedelta,timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -60,6 +60,55 @@ def interactive():
 
 def require_desktop():
     if not interactive():raise ValueError('Please unlock Windows and run Ninja in your interactive user session')
+
+
+# A Windows reminder toast (stays until dismissed, plays the reminder sound). Title and text go in environment
+# variables and are set as XML text, so nothing the user said is parsed as markup or as PowerShell.
+TOAST=("[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null;"
+       "[Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime]|Out-Null;"
+       "$x=[Windows.Data.Xml.Dom.XmlDocument]::new();"
+       "$x.LoadXml('<toast scenario=\"reminder\"><visual><binding template=\"ToastGeneric\"><text></text><text></text></binding></visual>"
+       "<actions><action content=\"Dismiss\" arguments=\"dismiss\" activationType=\"system\"/></actions><audio src=\"ms-winsoundevent:Notification.Reminder\"/></toast>');"
+       "$t=$x.GetElementsByTagName('text');$t.Item(0).InnerText=$env:NINJA_TITLE;$t.Item(1).InnerText=$env:NINJA_TEXT;"
+       # Windows PowerShell's own app id: toasts need a registered app, and Ninja is not installed as one.
+       "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show([Windows.UI.Notifications.ToastNotification]::new($x))")
+
+
+def notify(title,text):
+    subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',TOAST],capture_output=True,timeout=20,check=True,
+                   env={**os.environ,'NINJA_TITLE':title[:100],'NINJA_TEXT':text[:300]},creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+
+
+def powershell(script,env=None,timeout=15):
+    out=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',script],capture_output=True,timeout=timeout,
+                       env={**os.environ,**(env or {})},creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    if out.returncode!=0:raise ValueError('Windows did not allow that: '+out.stderr.decode('utf-8','replace').strip()[:200])
+    return out.stdout
+
+
+def clipboard():
+    require_desktop()
+    # UTF-8 output so Hindi and emoji survive.
+    return powershell('[Console]::OutputEncoding=[Text.Encoding]::UTF8;Get-Clipboard -Raw').decode('utf-8','replace').rstrip('\r\n')
+
+
+def set_clipboard(text):
+    require_desktop()
+    powershell('Set-Clipboard -Value $env:NINJA_CLIP',{'NINJA_CLIP':text})
+
+
+# Physical pixels (DPI-aware), primary screen, scaled to 1600 px wide JPEG; returned as base64 and never written to disk.
+SCREENSHOT=("Add-Type -AssemblyName System.Windows.Forms,System.Drawing;"
+            "Add-Type -Name U -Namespace W -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SetProcessDPIAware();';[W.U]::SetProcessDPIAware()|Out-Null;"
+            "$b=[Windows.Forms.Screen]::PrimaryScreen.Bounds;$full=New-Object Drawing.Bitmap $b.Width,$b.Height;"
+            "[Drawing.Graphics]::FromImage($full).CopyFromScreen($b.Location,[Drawing.Point]::Empty,$b.Size);"
+            "$w=[Math]::Min(1600,$b.Width);$small=New-Object Drawing.Bitmap $full,$w,([int]($b.Height*$w/$b.Width));"
+            "$m=New-Object IO.MemoryStream;$small.Save($m,[Drawing.Imaging.ImageFormat]::Jpeg);[Convert]::ToBase64String($m.ToArray())")
+
+
+def screenshot():
+    require_desktop()
+    return powershell(SCREENSHOT,timeout=20).decode('ascii').strip()
 
 
 def launch(target):
@@ -124,12 +173,152 @@ def press(key):
     user.keybd_event(key,0,0,0);user.keybd_event(key,0,2,0)
 
 
-def media(action,steps=1):
+# Windows media sessions (the players shown in the volume flyout): real pause/resume and what is playing.
+# The play/pause key only toggles, so "pause it" with nothing playing started music.
+SESSIONS=r"""[Console]::OutputEncoding=[Text.Encoding]::UTF8;Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTask=([System.WindowsRuntimeSystemExtensions].GetMethods()|Where-Object{$_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'})[0]
+function Await($op,[Type]$type){$t=$asTask.MakeGenericMethod($type).Invoke($null,@($op));$t.Wait(-1)|Out-Null;$t.Result}
+[Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]|Out-Null
+$m=Await ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]::RequestAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager])
+$current=$m.GetCurrentSession();$out=@()
+foreach($s in $m.GetSessions()){
+ $p=Await ($s.TryGetMediaPropertiesAsync()) ([Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties])
+ $status=[string]$s.GetPlaybackInfo().PlaybackStatus;$acted=$false
+ if($env:NINJA_MEDIA -eq 'pause' -and $status -eq 'Playing'){$acted=Await ($s.TryPauseAsync()) ([bool])}
+ if($env:NINJA_MEDIA -eq 'resume' -and $current -and $s.SourceAppUserModelId -eq $current.SourceAppUserModelId -and $status -ne 'Playing'){$acted=Await ($s.TryPlayAsync()) ([bool])}
+ $out+=[pscustomobject]@{app=($s.SourceAppUserModelId -replace '\.exe$','' -replace '^.*!','');status=$status;title=(@($p.Artist,$p.Title)|Where-Object{$_})-join ' - ';acted=$acted}}
+ConvertTo-Json -Compress -InputObject @($out)"""
+
+
+def media_sessions(action='status'):
     require_desktop()
-    if action not in MEDIA:raise ValueError('Choose play_pause, next, previous, volume_up, volume_down or mute')
+    out=powershell(SESSIONS,{'NINJA_MEDIA':action},timeout=20).decode('utf-8','replace').strip()
+    return json.loads(out) if out else []
+
+
+def pause_or_resume(action):
+    sessions=media_sessions(action);acted=[s for s in sessions if s.get('acted')]
+    if acted:return {'action':action,'players':[f"{s['app']}: {s['title']}" for s in acted],'verification':'Windows media session reported the change.'}
+    if action=='pause':return {'action':'pause','players':[],'verification':'Nothing was playing, so nothing changed.'}
+    # "Play music" with no player open: start Spotify and resume what it last played.
+    launch('spotify:')
+    for _ in range(10):
+        time.sleep(1)
+        acted=[s for s in media_sessions('resume') if s.get('acted') or s.get('status')=='Playing']
+        if acted:return {'action':'resume','players':[f"{s['app']}: {s['title']}" for s in acted],'verification':'Opened Spotify and resumed it.'}
+    raise ValueError('Spotify opened but did not start playing; ask which song to play.')
+
+
+def media(action,steps=1):
+    if action in ('pause','resume'):return pause_or_resume(action)
+    require_desktop()
+    if action not in MEDIA:raise ValueError('Choose pause, resume, play_pause, next, previous, volume_up, volume_down or mute')
     count=max(1,min(10,steps)) if action.startswith('volume_') else 1
     for _ in range(count):press(MEDIA[action])
     return {'action':action,'presses':count,'verification':'Media key sent to Windows; each volume step is about 2%.'}
+
+
+def spotify_title():
+    """The Spotify window title: "Artist - Song" while playing, "Spotify Premium"/"Spotify Free" when paused, '' if closed."""
+    out=powershell('(Get-Process Spotify -ErrorAction SilentlyContinue | Where-Object MainWindowTitle | Select-Object -First 1 -ExpandProperty MainWindowTitle)')
+    return out.decode('utf-8','replace').strip()
+
+
+_spotify={'token':'','until':0.0}
+
+
+def spotify_api_track(query):
+    """Spotify's own search (client-credentials app in .env: SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET). No user sign-in."""
+    import httpx
+    client_id,secret=os.getenv('SPOTIFY_CLIENT_ID',''),os.getenv('SPOTIFY_CLIENT_SECRET','')
+    if not client_id or not secret:return None
+    with httpx.Client(timeout=10,trust_env=False) as client:
+        if time.time()>_spotify['until']:
+            token=client.post('https://accounts.spotify.com/api/token',data={'grant_type':'client_credentials'},auth=(client_id,secret)).raise_for_status().json()
+            _spotify.update(token=token['access_token'],until=time.time()+token.get('expires_in',3600)-60)
+        items=client.get('https://api.spotify.com/v1/search',params={'q':query,'type':'track','limit':1,'market':'IN'},
+                         headers={'Authorization':'Bearer '+_spotify['token']}).raise_for_status().json()['tracks']['items']
+    return (items[0]['id'],items[0]['name']+' - '+', '.join(a['name'] for a in items[0]['artists'])) if items else None
+
+
+def spotify_track(query):
+    """A Spotify track id: Spotify's API when configured, else DuckDuckGo's results for open.spotify.com track pages.
+    DuckDuckGo answers with a bot check after many searches; that is respected, and the caller opens Spotify's search."""
+    import httpx
+    from . import adapters
+    try:
+        found=spotify_api_track(query)
+        if found:return found
+    except (httpx.HTTPError,KeyError,ValueError):pass
+    try:
+        with httpx.Client(timeout=10,follow_redirects=False,trust_env=False) as client:results=adapters._duckduckgo(client,'site:open.spotify.com/track '+query)
+    except (httpx.HTTPError,ValueError):return None
+    for item in (results or {}).get('sources',[]):
+        match=re.search(r'open\.spotify\.com/(?:intl-[\w-]+/)?track/(\w{22})',item.get('url',''))
+        if match:return match.group(1),re.sub(r'\s*[|].*$','',item.get('title') or '')
+    return None
+
+
+# Presses the Play button of the Spotify search result that best matches the song, through Windows UI Automation
+# (the screen-reader interface). It must match at least half the words, so a library playlist is never pressed instead.
+# Spotify exposes its buttons only after the first accessibility request, hence the caller's retries.
+SPOTIFY_PRESS=r"""Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes
+$words=@(($env:NINJA_SONG.ToLower() -split '\W+')|Where-Object{$_.Length -gt 1})
+$proc=Get-Process Spotify -ErrorAction SilentlyContinue|Where-Object MainWindowHandle -ne 0|Select-Object -First 1
+if(-not $proc){'{}';exit}
+$root=[System.Windows.Automation.AutomationElement]::FromHandle($proc.MainWindowHandle)
+$cond=New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty,[System.Windows.Automation.ControlType]::Button)
+$best=$null;$score=0
+foreach($b in $root.FindAll([System.Windows.Automation.TreeScope]::Descendants,$cond)){
+ $name=$b.Current.Name;if($name -notmatch '^Play '){continue}
+ $s=@($words|Where-Object{$name.ToLower() -match ('\b'+[regex]::Escape($_)+'\b')}).Count
+ if($s -gt $score){$best=$b;$score=$s}}
+if($best -and $score*2 -ge $words.Count){$best.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke();ConvertTo-Json -Compress @{pressed=$best.Current.Name}}else{'{}'}"""
+
+
+def wait_playing(seconds=8):
+    """The song Spotify's window names once it plays, else ''."""
+    for _ in range(int(seconds*2)):
+        time.sleep(.5);now=spotify_title()
+        if now and not now.lower().startswith('spotify'):return now
+    return ''
+
+
+def play_song(query):
+    """Spotify app: a track link starts playback on Windows; without one (no link found), Spotify's search opens and
+    the best-matching result's Play button is pressed. Either way the window title confirms what is playing."""
+    require_desktop()
+    from urllib.parse import quote
+    found=spotify_track(query)
+    if found:
+        launch('spotify:track:'+found[0])
+    else:
+        launch('spotify:search:'+quote(query));time.sleep(1.5)
+        pressed=''
+        for _ in range(8):
+            pressed=json.loads(powershell(SPOTIFY_PRESS,{'NINJA_SONG':query},timeout=20).decode('utf-8','replace').strip() or '{}').get('pressed','')
+            if pressed:break
+            time.sleep(.7)
+        if not pressed:
+            return {'opened':'Spotify search','query':query,'playing':False,'verification':'Spotify search is open but no result matched well enough to press; ask the user to pick the song.'}
+    now=wait_playing()
+    if now:return {'playing':now,'app':'Spotify','verification':'Spotify window shows this song playing.'}
+    return {'opened':query,'app':'Spotify','playing':False,'verification':'Sent to Spotify, but its window did not show the song playing within 8 seconds.'}
+
+
+def play_video(query):
+    """Top YouTube result for the query, played in the default browser (yt-dlp search; no API key or sign-in)."""
+    require_desktop()
+    import yt_dlp
+    try:
+        with yt_dlp.YoutubeDL({'quiet':True,'no_warnings':True,'extract_flat':True,'skip_download':True,'noplaylist':True,'socket_timeout':15}) as ydl:
+            entries=ydl.extract_info('ytsearch1:'+query,download=False).get('entries') or []
+    except yt_dlp.utils.DownloadError:raise ValueError('YouTube search did not answer; try again') from None
+    if not entries:raise ValueError('No YouTube video found for '+query)
+    video=entries[0];url='https://www.youtube.com/watch?v='+video['id']
+    launch(url)
+    return {'playing':video.get('title') or query,'channel':video.get('channel') or video.get('uploader') or '','url':url,'app':'browser',
+            'verification':'Opened in the default browser, where YouTube starts it; the page itself was not inspected.'}
 
 
 def known_folder(guid):
@@ -164,39 +353,132 @@ def hidden(entry):
     except OSError:return True
 
 
-def find_files(query,kind='any'):
-    words=normal(query).split()
-    if not words:raise ValueError('Say part of the file name')
-    wanted=KINDS.get(kind);results=[];seen=0;started=time.monotonic();truncated=False
-    folders=personal_folders()
+# Spoken names for things people store under other words.
+SYNONYMS={'signature':('signature','sign'),'resume':('resume','cv'),'cv':('resume','cv'),'photo':('photo','img','image','pic'),
+          'invoice':('invoice','bill','receipt'),'bill':('invoice','bill','receipt'),'screenshot':('screenshot','screen shot','capture')}
+INDEX_KIND={'video':"System.Kind='video'",'image':"System.Kind='picture'",'audio':"System.Kind='music'",'document':"System.Kind='document'",'pdf':"System.FileExtension='.pdf'"}
+SINCE={'today':0,'yesterday':1,'week':7,'month':31}
+# Windows Search (the Start-menu index): name and content matches in ~0.1 s. The query text is built here from
+# cleaned words only and handed over in an environment variable, never spliced into the PowerShell command.
+INDEX_SCRIPT=("$c=New-Object -ComObject ADODB.Connection;$c.Open(\"Provider=Search.CollatorDSO;Extended Properties='Application=Windows';\");"
+              "$r=$c.Execute($env:NINJA_SEARCH_SQL);$o=@();while(-not $r.EOF){$o+=[pscustomobject]@{p=[string]$r.Fields.Item('System.ItemPathDisplay').Value;"
+              "m=([datetime]$r.Fields.Item('System.DateModified').Value).ToLocalTime().ToString('s');s=[int64]$r.Fields.Item('System.Size').Value};$r.MoveNext()};"
+              "ConvertTo-Json -Compress -InputObject @($o)")
+
+
+def named(words,filename):
+    """Every spoken word (or a synonym) starts a word of the file name: 'sign' matches 'sign.png', not 'design.png'."""
+    tokens=normal(filename).split()
+    return all(any(t.startswith(o) for o in SYNONYMS.get(w,(w,)) for t in tokens) for w in words)
+
+
+def exact(words,filename):
+    """The spoken word itself (not only a synonym) starts a word of the name: ranks 'signature1.jpg' above 'signADB.pdf'."""
+    tokens=normal(filename).split()
+    return all(any(t.startswith(w) for t in tokens) for w in words)
+
+
+# Spoken filler that is never part of the file being looked for.
+FILLER={'my','the','a','an','of','for','from','file','files','find','show','open','please','me','mera','meri','mere','wala','wali','wale','ki','ka','ke','dhundo','dikhao',
+        'downloaded','saved','recent','latest','last','new','today','yesterday','week','month','this'}
+# A type word sets the type filter instead of being searched for ("the PDF I downloaded yesterday").
+TYPE_WORDS={'pdf':'pdf','pdfs':'pdf','video':'video','videos':'video','clip':'video','clips':'video','photo':'image','photos':'image','image':'image','images':'image',
+            'picture':'image','pictures':'image','pic':'image','pics':'image','song':'audio','songs':'audio','audio':'audio','music':'audio','document':'document','documents':'document','doc':'document',
+            'recording':'video','recordings':'video'}
+
+
+def search_words(query,kind='any',modified='any'):
+    """(words, kind). Words may be empty only when a type or date narrows the search."""
+    # Screen recordings are named by date, so "screen" would match nothing.
+    words=[w for w in normal(query).replace('screen recording','recording').split() if (len(w)>1 or w.isdigit()) and w not in FILLER]
+    for w in list(words):
+        if w in TYPE_WORDS:
+            words.remove(w);kind=kind if kind!='any' else TYPE_WORDS[w]
+    if not words and kind=='any' and modified=='any':raise ValueError('Say part of the file name, something written in it, or a type and day')
+    return words[:6],kind
+
+
+def since_date(modified,now=None):
+    if modified not in SINCE:return None
+    now=now or datetime.now()
+    return (now.replace(hour=0,minute=0,second=0,microsecond=0)-timedelta(days=SINCE[modified]))
+
+
+def index_sql(words,kind,since,folders):
+    scopes=' OR '.join("SCOPE='file:"+f.as_posix().replace("'","")+"'" for f in folders)
+    def term(w):
+        options=SYNONYMS.get(w,(w,))
+        return '('+' OR '.join(f"System.FileName LIKE '%{o}%' OR CONTAINS(*,'\"{o}*\"')" for o in options)+')'
+    where=['('+scopes+')']+[term(w) for w in words]
+    if kind in INDEX_KIND:where.append(INDEX_KIND[kind])
+    if since:where.append("System.DateModified >= '"+since.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')+"'")
+    return 'SELECT TOP 60 System.ItemPathDisplay, System.DateModified, System.Size FROM SYSTEMINDEX WHERE '+' AND '.join(where)+' ORDER BY System.DateModified DESC'
+
+
+def index_search(words,kind,since,folders):
+    """Rows from Windows Search, or None when the index is unavailable (the caller then walks the folders)."""
+    try:
+        out=subprocess.run(['powershell','-NoProfile','-NonInteractive','-Command',INDEX_SCRIPT],capture_output=True,text=True,timeout=8,
+                           env={**os.environ,'NINJA_SEARCH_SQL':index_sql(words,kind,since,folders)},creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    except (OSError,subprocess.TimeoutExpired):return None
+    if out.returncode!=0:return None
+    text=out.stdout.strip()
+    rows=json.loads(text) if text else []
+    return [rows] if isinstance(rows,dict) else rows
+
+
+def walk_search(words,kind,since,folders):
+    """Name-only fallback when Windows Search is off."""
+    wanted=KINDS.get(kind) or ({'.pdf'} if kind=='pdf' else None);rows=[];seen=0;started=time.monotonic()
     for root in folders:
         stack=[(root,0)]
-        while stack:
+        while stack and seen<=40000 and time.monotonic()-started<=4:
             folder,depth=stack.pop()
             try:entries=list(os.scandir(folder))
             except OSError:continue
             for entry in entries:
                 seen+=1
-                # Trade-off: bounded name walk (40k entries / 4 s); an indexed search is the upgrade if folders grow large.
-                if seen>40000 or time.monotonic()-started>4:truncated=True;break
                 if hidden(entry):continue
                 if entry.is_dir(follow_symlinks=False):
                     if depth<6:stack.append((Path(entry.path),depth+1))
                     continue
                 if wanted and Path(entry.name).suffix.lower() not in wanted:continue
-                title=normal(entry.name)
-                if all(w in title for w in words):
-                    info=entry.stat();results.append({'name':entry.name,'path':entry.path,'folder':root.name,'size_mb':round(info.st_size/1048576,2),
-                        'modified':datetime.fromtimestamp(info.st_mtime).strftime('%Y-%m-%d %H:%M'),'_m':info.st_mtime})
-            if truncated:break
-        if truncated:break
-    results.sort(key=lambda r:-r.pop('_m'))
-    return {'query':query,'files':results[:15],'total':len(results),'searched':[f.name for f in folders],'truncated':truncated}
+                if named(words,entry.name):
+                    info=entry.stat()
+                    if since and info.st_mtime<since.timestamp():continue
+                    rows.append({'p':entry.path,'m':datetime.fromtimestamp(info.st_mtime).isoformat(timespec='seconds'),'s':info.st_size})
+    return rows
+
+
+def find_files(query,kind='any',modified='any'):
+    words,kind=search_words(query,kind,modified);since=since_date(modified);folders=personal_folders()
+    rows=index_search(words,kind,since,folders);engine='windows-search'
+    # Unindexed folders (or the index switched off): fall back to the bounded name walk.
+    if not rows:rows=walk_search(words,kind,since,folders);engine='name-walk'
+    allowed=[f.resolve() for f in folders];results=[]
+    for row in rows:
+        path=Path(row['p'])
+        if any(part.startswith(('.','$')) for part in path.parts) or not any(path.is_relative_to(f) for f in allowed):continue
+        by_name=named(words,path.name)
+        rank=2 if exact(words,path.name) else 1 if by_name else 0
+        results.append({'name':path.name,'path':str(path),'folder':next(f.name for f in allowed if path.is_relative_to(f)),'size_mb':round(int(row.get('s') or 0)/1048576,2),
+                        'modified':row['m'][:16].replace('T',' '),'match':'name' if by_name else 'content','_rank':rank})
+    # Exact word in the name, then a synonym in the name, then a match inside the file; newest first in each group.
+    results.sort(key=lambda r:r['modified'],reverse=True);results.sort(key=lambda r:-r['_rank'])
+    ordered=[{k:v for k,v in r.items() if k!='_rank'} for r in results]
+    # The model often reads "latest" as today; with nothing that new, offer the newest matches from any date.
+    if not ordered and modified!='any' and (words or kind!='any'):
+        wider=find_files(query,kind)
+        if wider['files']:return wider|{'note':f'Nothing from {modified}; these are the newest matches from any date. '+wider['note']}
+    return {'query':query,'files':ordered[:8],'total':len(ordered),'engine':engine,'searched':[f.name for f in folders],
+            'note':'Files are already in best-match order (the first is the best). Several match: mention the first two or three in this order and ask which one.' if len(ordered)>1 else ''}
 
 
 def open_file(path):
     require_desktop()
-    try:target=Path(path).resolve(strict=True)
+    # "Downloads" or "my downloads folder" names a personal folder directly.
+    named=None if re.search(r'[\\/]',path) else next((root for root in personal_folders() if root.name.lower() in normal(path).split()),None)
+    try:target=named or Path(path).resolve(strict=True)
     except OSError:raise ValueError('That file or folder no longer exists') from None
     if not any(target==root or target.is_relative_to(root) for root in personal_folders()):
         raise ValueError('Jarvis only opens items inside your personal folders (Desktop, Documents, Downloads, Videos, Pictures, Music)')

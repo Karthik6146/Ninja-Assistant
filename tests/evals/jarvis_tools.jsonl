@@ -25,8 +25,6 @@
 {"text":"What's the weather in Noida today?","expect":["weather.now"]}
 {"text":"नोएडा का मौसम कैसा है?","expect":["weather.now"]}
 {"text":"Kal Delhi mein baarish hogi kya?","expect":["weather.now"]}
-{"text":"Find popular YouTube videos about Valorant tips","expect":["youtube.search"]}
-{"text":"YouTube pe Minecraft shorts ke trending videos dikhao","expect":["youtube.search"]}
 {"text":"What are people saying on Reddit about the RTX 5060?","expect":["research.deep","research.search"]}
 {"text":"Reddit pe best budget mic ke baare me log kya bol rahe hai?","expect":["research.deep","research.search"]}
 {"text":"List my video workflows","expect":["workflow.list"]}
@@ -40,7 +38,7 @@
 {"text":"Open youtube.com","expect":["web.open"]}
 {"text":"Gaana pause karo","expect":["media.control"]}
 {"text":"Volume thoda badhao","expect":["media.control"]}
-{"text":"Next song lagao","expect":["media.control"]}
+{"text":"Next song lagao","expect":["media.control","media.play"]}
 {"text":"Find my Valorant clip in my videos","expect":["file.find"]}
 {"text":"Downloads folder mein resume wali PDF dhundo","expect":["file.find"]}
 {"text":"Any new emails, sir?", "expect":["gmail.list"]}
@@ -50,3 +48,28 @@
 {"text":"Any WhatsApp messages?","expect":["whatsapp.recent"]}
 {"text":"Rahul ne WhatsApp pe kya bola?","expect":["whatsapp.recent"]}
 {"text":"कोई व्हाट्सएप मैसेज आया क्या?","expect":["whatsapp.recent"]}
+{"text":"Find my signature image","expect":["file.find"]}
+{"text":"Open the PDF I downloaded yesterday","expect":["file.find"]}
+{"text":"Pichle hafte ke screenshots dikhao","expect":["file.find"]}
+{"text":"Watch this and tell me what it's about https://www.youtube.com/watch?v=jNQXAC9IVRw","expect":["video.describe"]}
+{"text":"Ye video kis baare mein hai https://youtu.be/aircAruvnKk","expect":["video.describe"]}
+{"text":"Describe my latest screen recording","expect":["file.find"]}
+{"text":"Set a timer for 10 minutes for my tea","expect":["assistant.remind"]}
+{"text":"Note down that the wifi password is on the router sticker","expect":["note.add"]}
+{"text":"What did I note about the wifi?","expect":["note.read"]}
+{"text":"Summarise what I copied","expect":["clipboard.read"]}
+{"text":"What's on my screen right now?","expect":["screen.look"]}
+{"text":"Is error ko samjhao jo screen pe hai","expect":["screen.look"]}
+{"text":"Open my Downloads folder","expect":["file.open"]}
+{"text":"Can you find me a file name signature","expect":["file.find"]}
+{"text":"Play music for me","expect":["media.control","media.play"]}
+{"text":"Change the track","expect":["media.control"]}
+{"text":"Play I feel it coming on Spotify","expect":["media.play"]}
+{"text":"Tell me today's news","expect":["research.deep"]}
+{"text":"So that is happening right now","expect":[]}
+{"text":"Okay, nice.","expect":[]}
+{"text":"Play I feel it coming by The Weeknd","expect":["media.play"]}
+{"text":"YouTube pe biryani recipe chalao","expect":["media.play"]}
+{"text":"Play the trailer of Avengers on YouTube","expect":["media.play"]}
+{"text":"Open Spotify app","expect":["app.open"]}
+{"text":"Hi","expect":[]}

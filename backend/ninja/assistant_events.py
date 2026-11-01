@@ -1,8 +1,8 @@
 """Local reminders, claimed atomically; no unsolicited external messages."""
-import time,uuid
-from . import db
+import subprocess,time,uuid
+from . import db,desktop
 
-def add(text,due,key,context=None):
+def add(text,due,key,context=None,tolerance=.001):
     if not text.strip() or len(text)>200:raise ValueError('Reminder needs 1–200 characters')
     if not 0<due<time.time()+366*86400:raise ValueError('Choose a reminder within the next year')
     id=uuid.uuid5(uuid.NAMESPACE_URL,key).hex
@@ -13,7 +13,7 @@ def add(text,due,key,context=None):
             check_write(c,'assistant.remind',context)
         old=c.execute('SELECT * FROM assistant_reminders WHERE id=?',(id,)).fetchone()
         if old:
-            if old['text']!=text or abs(old['due']-due)>.001:raise ValueError('Reminder key used for different inputs')
+            if old['text']!=text or abs(old['due']-due)>tolerance:raise ValueError('Reminder key used for different inputs')
             return dict(old)
         c.execute('INSERT INTO assistant_reminders VALUES(?,?,?,?,?)',(id,text,due,'scheduled',time.time()))
     return {'id':id,'text':text,'due':due,'state':'scheduled'}
@@ -26,9 +26,13 @@ def tick(now=None):
     if db.stopped():return []
     with db.connect() as c:
         c.execute('BEGIN IMMEDIATE')
-        due=[r[0] for r in c.execute("SELECT id FROM assistant_reminders WHERE state='scheduled' AND due<=?",(now,))]
+        due=[dict(r) for r in c.execute("SELECT id,text FROM assistant_reminders WHERE state='scheduled' AND due<=?",(now,))]
         c.execute("UPDATE assistant_reminders SET state='due' WHERE state='scheduled' AND due<=?",(now,))
-    return due
+    # Claimed first, so a failed toast is never repeated; the Jarvis page still shows and speaks it.
+    for reminder in due:
+        try:desktop.notify('Jarvis reminder',reminder['text'])
+        except (OSError,subprocess.SubprocessError):db.audit('reminder.notify-failed',{'id':reminder['id']})
+    return [r['id'] for r in due]
 
 def dismiss(id):
     with db.connect() as c:c.execute("UPDATE assistant_reminders SET state='dismissed' WHERE id=?",(id,))

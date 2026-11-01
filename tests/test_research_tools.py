@@ -46,25 +46,40 @@ def test_deep_research_reads_pages_and_numbers_only_read_sources(monkeypatch):
     assert data['unread']==['https://b.test/2']
 
 
-def test_youtube_search_uses_a_connected_channel(monkeypatch):
-    monkeypatch.setattr(rt.auth,'channels',lambda:[{'id':'UC1','connection':'c1','connected':True}])
-    monkeypatch.setattr(rt.auth,'target',lambda connection,channel:contextlib.nullcontext())
-    calls=[]
-    def api(method,resource,**kw):
-        calls.append(resource)
-        if resource=='search':return {'items':[{'id':{'videoId':'v1'}}]}
-        return {'items':[{'id':'v1','snippet':{'title':'Valorant tips','channelTitle':'Pro','publishedAt':'2026-10-01T00:00:00Z'},'statistics':{'viewCount':'12000','likeCount':'900'},'contentDetails':{'duration':'PT45S'}}]}
-    monkeypatch.setattr(rt.auth,'api',api)
-    data=rt.youtube(rt.YouTubeQuery(query='Valorant tips'),20,None)['data']
-    assert calls==['search','videos'] and data['videos'][0]=={'title':'Valorant tips','channel':'Pro','views':12000,'likes':900,'published':'2026-10-01','duration':'PT45S','url':'https://www.youtube.com/watch?v=v1'}
-
-
-def test_youtube_search_without_channel_says_how_to_connect(monkeypatch):
-    monkeypatch.setattr(rt.auth,'channels',lambda:[])
-    with pytest.raises(ValueError,match='Connect'):rt.youtube(rt.YouTubeQuery(query='x'),20,None)
-
-
 def test_new_tools_are_registered_read_only():
     from ninja import tools,assistant_tools  # noqa: F401
-    for name in ('weather.now','research.deep','youtube.search'):
+    for name in ('weather.now','research.deep'):
         tool=tools.REGISTRY[name];assert tool.effect=='routine' and tool.permission=='research.read'
+
+
+def test_relevant_keeps_matching_paragraphs_in_page_order():
+    page='\n'.join(['Menu Home About Contact Subscribe to our newsletter today', 'A heat pump moves heat from outside air into the house in winter.',
+                    'Our company was founded in 1990 and has many happy customers.', 'In summer the heat pump reverses and moves heat out of the house.'])
+    kept=rt.relevant(page,'how does a heat pump work',limit=140)
+    assert kept.splitlines()==['A heat pump moves heat from outside air into the house in winter.','In summer the heat pump reverses and moves heat out of the house.']
+
+
+def test_duckduckgo_results_unwrap_links_and_skip_ads():
+    page=('<div class="result results_links result--ad"><a class="result__a" href="https://duckduckgo.com/y.js?ad=1">Ad</a></div>'
+          '<div class="result results_links web-result"><a rel="nofollow" class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.rtings.com%2Fmouse&amp;rut=x">Best <b>Mouse</b></a>'
+          '<a class="result__snippet" href="#">The <b>G305</b> &amp; more</a></div>')
+    client=httpx.Client(transport=httpx.MockTransport(lambda request:httpx.Response(200,text=page)))
+    assert rt.adapters._duckduckgo(client,'mouse')=={'provider':'DuckDuckGo','sources':[{'title':'Best Mouse','url':'https://www.rtings.com/mouse','snippet':'The G305 & more'}]}
+
+
+def test_news_is_newest_first():
+    rss=('<rss><channel>'+''.join(f'<item><title>{t}</title><link>https://www.bing.com/news/apiclick.aspx?url=https%3A%2F%2Fn.test%2F{t}</link><pubDate>{d}</pubDate></item>'
+         for t,d in (('old','Tue, 22 Sep 2026 10:00:00 GMT'),('new','Tue, 27 Oct 2026 10:00:00 GMT')))+'</channel></rss>')
+    client=httpx.Client(transport=httpx.MockTransport(lambda request:httpx.Response(200,text=rss)))
+    assert [s['title'] for s in rt.adapters._bing_news(client,'valorant patch')['sources']]==['new','old']
+
+
+def test_general_news_uses_top_stories_and_topics_still_search(monkeypatch):
+    monkeypatch.setattr(rt.adapters,'top_news',lambda:{'provider':'Google News top stories (India)','sources':[{'title':'Chopper crash in Uttarakhand - The Hindu','date':'Fri, 30 Oct 2026'}]})
+    searched=[]
+    monkeypatch.setattr(rt.adapters,'web_search',lambda q,news=False:searched.append(q) or {'provider':'x','sources':[{'title':'T','url':'https://t.test/','snippet':'Tech stocks fell sharply after earnings this week.'}]})
+    monkeypatch.setattr(rt.adapters,'extract',lambda url:{'excerpt':''})
+    data=rt.deep(rt.Research(query="Tell me today's news",recent=True),60,None)['data']
+    assert data['sources'][0]=={'n':1,'title':'Chopper crash in Uttarakhand - The Hindu','date':'Fri, 30 Oct 2026'} and searched==[]
+    rt.deep(rt.Research(query='technology news today',recent=True),60,None)
+    assert searched==['technology news today']

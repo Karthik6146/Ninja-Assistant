@@ -7,6 +7,10 @@ from .config import DATA,ROOT
 from .video_sources import caption_config
 
 VOICE_TIMEOUT=120
+# English words the owner says inside Hindi sentences. As a recognition hint they lift Hindi key-word accuracy from
+# 74% to 88% (English stays 100%) and come out in English ("Mera resume dhundho"). Hindi verbs are left out:
+# as hints they loop ("बताओ, बताओ, …") on noise. A transcript that only echoes this list is rejected below.
+VOCABULARY=['Jarvis','joke','resume','screenshot','volume','timer','reminder','YouTube','video','file','folder','WhatsApp','weather']
 _engine=None
 
 def _fingerprint(parts):
@@ -19,7 +23,7 @@ class _Resident:
         root,python,script,model=parts
         self.fingerprint=_fingerprint(parts);self.folder=tempfile.TemporaryDirectory(prefix='ninja-voice-engine-')
         self.audio=Path(self.folder.name)/'utterance.wav';self.responses=queue.Queue(maxsize=1)
-        env={**os.environ,'HF_HUB_OFFLINE':'1','TRANSFORMERS_OFFLINE':'1','PYTHONIOENCODING':'utf-8'}
+        env={**os.environ,'HF_HUB_OFFLINE':'1','TRANSFORMERS_OFFLINE':'1','PYTHONIOENCODING':'utf-8','NINJA_VOICE_VOCABULARY':json.dumps(VOCABULARY)}
         try:
             self.process=subprocess.Popen([str(python),str(ROOT/'scripts/voice-resident.py'),str(script),str(model),self.folder.name],cwd=root,
                 env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -75,7 +79,11 @@ def components():
     setting=os.getenv('JARVIS_VOICE_MODEL','')
     from .neural_voice import home
     installed=home()/'models/whisper-small'
+    # ClipX's large-v3-turbo hears Hindi far better (74% vs 43% of key words on our benchmark, English 100% on both)
+    # for ~0.3 s more per turn and ~0.9 GB more GPU memory; small is the fallback when ClipX lacks it.
+    turbo=sorted((root/'.models/whisper/models--dropbox-dash--faster-whisper-large-v3-turbo/snapshots').glob('*/model.bin'))
     if setting:model=Path(setting).resolve()
+    elif turbo:model=turbo[0].parent
     elif (installed/'model.bin').is_file():model=installed
     else:
         cached=Path.home()/'.cache/huggingface/hub/models--Systran--faster-whisper-tiny/snapshots'
@@ -88,7 +96,7 @@ def status():
     ready=python.is_file() and script.is_file() and (model/'model.bin').is_file()
     engine=_engine
     warm=bool(ready and engine is not None and engine.process.poll() is None and engine.fingerprint==_fingerprint((root,python,script,model)) and engine.warm)
-    return {'ready':ready,'warm':warm,'model':model.name,'engine':'Existing standalone ClipX  /  warm GPU (CPU fallback)  /  offline','message':'Local multilingual recognition, reused between turns. Choose Hinglish for Hindi + English; names and numbers may still need correction.' if ready else 'Voice is not configured. Set your standalone Caption Tool folder in Settings and JARVIS_VOICE_MODEL to an existing multilingual model folder. No model is downloaded automatically.'}
+    return {'ready':ready,'warm':warm,'model':model.parent.parent.name.split('--')[-1] if model.parent.name=='snapshots' else model.name,'engine':'Existing standalone ClipX  /  warm GPU (CPU fallback)  /  offline','message':'Local English and Hindi recognition, reused between turns; names and numbers may still need correction.' if ready else 'Voice is not configured. Set your standalone Caption Tool folder in Settings and JARVIS_VOICE_MODEL to an existing multilingual model folder. No model is downloaded automatically.'}
 
 def native_wav(path):
     try:
@@ -119,7 +127,9 @@ def transcribe(path,language):
                 if decoded_audio.getnchannels()!=1 or decoded_audio.getsampwidth()!=2 or decoded_audio.getframerate()!=16000:raise ValueError('Speech decoder returned an unsupported audio format')
             if not math.isfinite(duration) or not 0<duration<=60:raise ValueError('Record one utterance between 0 and 60 seconds')
             decoded=time.monotonic()
-            try:frame=_engine.recognize('hi-latn' if language=='hinglish' else language)
+            # The owner speaks English or Hindi: automatic detection is limited to those two (hi-latn), because open
+            # detection wrote Hindi such as "आज मौसम कैसा है" in Urdu script.
+            try:frame=_engine.recognize('hi-latn' if language in ('auto','hinglish') else language)
             except (TimeoutError,ValueError,OSError):shutdown();raise
             words=frame['value'].get('words',[])
             if not isinstance(words,list) or len(words)>3000 or any(not isinstance(w,dict) or not isinstance(w.get('text'),str) for w in words):raise ValueError('Invalid local speech transcript; retry')
@@ -141,6 +151,8 @@ def voices():
 
 def speak(text,voice):
     from . import neural_voice
+    # Citation markers such as [1] are for the screen; spoken they come out as "one".
+    text=re.sub(r'\s*\[\d+\]','',text).strip() or text
     if voice in neural_voice.VOICES:return neural_voice.speak(text,voice)
     if not 1<=len(text)<=3000 or voice not in voices():raise ValueError('Choose an installed local voice and 1-3000 characters')
     with FileLock(DATA/'voice-tts.lock',timeout=0), tempfile.TemporaryDirectory(prefix='ninja-speech-') as temporary:
@@ -157,6 +169,10 @@ def uncertain_transcript(words,language):
     if language in ('en','hi','hinglish'):
         if any(c.isalpha() and not (unicodedata.name(c,'').startswith('LATIN ') or language!='en' and '\u0900'<=c<='\u097f') for c in text):return True
     tokens=re.findall(r"[\w]+",text.lower())
+    # Noise read as the hint list: four or more of its words in the list's own order ("YouTube video file" is real speech).
+    hints=[w.lower() for w in VOCABULARY]
+    order=[hints.index(t) if t in hints else -1 for t in tokens]
+    if any(-1<order[i]<order[i+1]<order[i+2]<order[i+3] for i in range(len(order)-3)):return True
     for size in range(1,5):
         for i in range(len(tokens)-size*4+1):
             if tokens[i:i+size]*4==tokens[i:i+size*4]:return True

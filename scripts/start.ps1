@@ -39,4 +39,8 @@ try {
     Pop-Location
     if ($ninjaControl -and -not $ninjaControl.HasExited) { & "$env:SystemRoot/System32/taskkill.exe" /PID $ninjaControl.Id /T /F | Out-Null }
     if (-not $ninjaWorker.HasExited) { & "$env:SystemRoot/System32/taskkill.exe" /PID $ninjaWorker.Id /T /F | Out-Null }
+    # Backup for a server that did not shut down cleanly: give Qwen's GPU memory back.
+    Push-Location $ninjaBackend
+    & $ninjaPython -c 'from ninja import adapters; adapters.release_local_model()' 2>$null
+    Pop-Location
 }

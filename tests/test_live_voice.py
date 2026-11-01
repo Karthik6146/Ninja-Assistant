@@ -36,7 +36,7 @@ def test_live_voice_streams_audio_and_returns_transcript(monkeypatch,tmp_path):
             ws.send_bytes(b'\0\0'*512)
             assert ws.receive_json()=={'type':'speech'}
             result=ws.receive_json()
-    assert result['type']=='transcript' and result['text']=='open calculator' and result['language']=='hinglish'
+    assert result['type']=='transcript' and result['text']=='open calculator' and result['language']=='auto'
     assert fake.modes==[True] and fake.audio==[b'\0\0'*512]
 
 

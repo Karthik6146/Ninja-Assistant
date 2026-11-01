@@ -195,7 +195,7 @@ def test_prompt_prefix_is_stable_between_turns_for_model_cache(monkeypatch):
     first,second=seen
     assert first[0]==second[0]
     assert second[1]['content']=='First question'
-    assert 'Current local date/time' in second[-1]['content'] and second[-1]['content'].startswith('Updated instruction: Second question')
+    assert '(Local time: ' in second[-1]['content'] and second[-1]['content'].startswith('Updated instruction: Second question')
 
 @pytest.mark.parametrize('text',['नोएडा का मौसम कैसा है?','Kal Delhi mein baarish hogi kya?','What is the weather in Pune?'])
 def test_weather_questions_count_as_tool_requests(text):
@@ -223,4 +223,105 @@ def test_unbacked_promises_are_hidden_from_the_model_but_backed_replies_stay():
               {'role':'tool','tool_name':'weather.now','content':'{}'},{'role':'assistant','content':'I have checked: 24°C, sir.'}]
     kept=agent.safe_history(messages,companion=True)
     assert [m['content'] for m in kept if m['role']=='assistant']==['','I have checked: 24°C, sir.']
-    assert len([m for m in kept if m['role']=='user'])==3
+    # Hidden replies take their questions with them: no unanswered question left for Qwen to answer instead of the newest.
+    assert [m['content'] for m in kept if m['role']=='user']==['weather?']
+
+
+def test_newest_question_follows_answered_history_after_a_hidden_refusal():
+    messages=[{'role':'user','content':'What is on my screen?'},{'role':'assistant','content':'I cannot see your screen, sir.'},{'role':'user','content':'Find my resume'}]
+    assert agent.safe_history(messages,companion=True)==[{'role':'user','content':'Find my resume'}]
+
+
+@pytest.mark.parametrize('text,expected',[('Who won the last IPL final?',True),('Who is the CEO of OpenAI?',True),('What is the price of iPhone 17 in India?',True),
+                                          ('What is photosynthesis?',False),('How does a heat pump work?',False),('Open my last file',False)])
+def test_changing_facts_need_a_lookup(text,expected):
+    from ninja import agent
+    assert agent.current_question(text) is expected
+
+
+def test_changing_fact_is_searched_even_when_the_model_answers_from_memory(monkeypatch):
+    from ninja import tools
+    searched=[]
+    monkeypatch.setattr(tools.REGISTRY['research.deep'],'execute',lambda params,timeout,context:searched.append(params.query) or {'data':{'sources':[{'n':1,'excerpt':'RCB won the 2025 final.'}]}})
+    answers=iter([AgentTurn(text='Mumbai Indians won.'),AgentTurn(text='Royal Challengers Bengaluru won the 2025 final [1].')])
+    monkeypatch.setattr(adapters,'agent_turn',lambda *a,**kw:next(answers))
+    created=companion('Who won the last IPL final?');run()
+    value=agent.get(created['task'])
+    assert searched==['Who won the last IPL final?'] and value['reply']=='Royal Challengers Bengaluru won the 2025 final [1].'
+
+
+@pytest.mark.parametrize('text',['Note down that the wifi password is on the router sticker','Take a note: buy milk','ye likh lo: meeting at 5'])
+def test_note_requests_are_actions(text):
+    assert agent.action_requested(text)
+
+
+def test_untried_refusals_are_hidden_from_later_turns():
+    history=[{'role':'user','content':'Ek joke sunao'},{'role':'assistant','content':'I cannot play audio files directly, sir.'},
+             {'role':'user','content':'What is on my screen?'},{'role':'assistant','content':'','tool_calls':[{'function':{'name':'screen.look','arguments':{}}}]},
+             {'role':'tool','tool_name':'screen.look','content':'{}'},{'role':'assistant','content':'I cannot read the small text, but it is VS Code.'}]
+    assert agent.unbacked(history)=={1}  # a refusal after a real tool call stays
+
+
+@pytest.mark.parametrize('text',["What's on my screen right now?",'Is error ko samjhao jo screen pe hai','What did I copy? Summarise what I copied','What is in my notes about wifi?'])
+def test_screen_clipboard_and_notes_questions_need_tools(text):
+    assert agent.action_requested(text)
+
+
+def test_retry_drops_chat_turns_but_keeps_tool_results():
+    messages=[{'role':'user','content':'Eek joke sunao'},{'role':'assistant','content':'Why do atoms lie? They make up everything, sir.'},
+              {'role':'user','content':'Find my resume'},{'role':'assistant','content':'','tool_calls':[{'function':{'name':'file.find','arguments':{}}}]},
+              {'role':'tool','tool_name':'file.find','content':'{}'},{'role':'assistant','content':'Found Karthik resume 2026.pdf, sir.'},
+              {'role':'user','content':"What's on my screen?"},{'role':'assistant','content':'I cannot see your screen, sir.'},{'role':'user','content':agent.RECOVERY}]
+    kept=[m['content'] for m in agent.safe_history(messages,companion=True,focus=True)]
+    assert kept==['Find my resume','','{}','Found Karthik resume 2026.pdf, sir.',"What's on my screen?"]
+    # Normal turns keep the chat (only the untried refusal goes) and still end with the newest question.
+    assert [m['content'] for m in agent.safe_history(messages,companion=True)][-1]=="What's on my screen?"
+
+
+@pytest.mark.parametrize('reply',['Of course, sir. I will increase the volume for you now.',"I'll set a timer for five minutes.",'Volume increased by one step, sir.','Timer set for 5 minutes, sir.'])
+def test_promised_or_stated_actions_without_a_tool_are_claims(reply):
+    assert agent.claims_action(reply)
+
+
+def test_spoken_volume_commands_are_actions():
+    assert agent.action_requested('Volume, increase') and agent.action_requested('Volume बढ़ाओ')
+    assert not agent.claims_action('I will explain how a heat pump works.')
+
+
+@pytest.mark.parametrize('text',['So that is happening right now','Okay, nice.','The latest one was better'])
+def test_comments_are_not_forced_searches(text):
+    assert not agent.current_question(text)
+
+
+def test_spoken_narration_without_a_tool_is_a_claim():
+    assert agent.claims_action('Opening signature1 (2).jpg for you now, sir.') and agent.claims_action('Playing music for you now, sir.')
+    assert not agent.claims_action('Photosynthesis turns light into food for plants, sir.')
+
+
+def test_unparsable_tool_call_is_retried_with_forward_slashes(monkeypatch):
+    import httpx
+    sent=[]
+    def handler(request):
+        body=json.loads(request.content);sent.append(body['messages'][-1]['content'])
+        if len(sent)==1:return httpx.Response(500,json={'error':'XML syntax error on line 4: unexpected end element </function>'})
+        return httpx.Response(200,json={'done':True,'message':{'content':'','tool_calls':[{'function':{'name':'file.read','arguments':{'path':'D:/Notes/ideas.txt'}}}]}})
+    real=httpx.Client
+    monkeypatch.setattr(httpx,'Client',lambda *a,**kw:real(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(adapters,'local_model',lambda:'qwen3.5:9b')
+    turn=adapters.agent_turn([{'role':'user','content':r'Read my notes file D:\Notes\ideas.txt'}],[],job=db.queue('p','agent_turn',{}))
+    assert sent==[r'Read my notes file D:\Notes\ideas.txt','Read my notes file D:/Notes/ideas.txt'] and turn.calls[0].arguments=={'path':'D:/Notes/ideas.txt'}
+
+
+@pytest.mark.parametrize('text,key',[('Next song lagao','next'),('Change the track','next'),('change the track again','next'),('Pichla gaana','previous'),
+                                     ('Volume badhao','volume_up'),('Volume, increase','volume_up'),('volume kam karo','volume_down'),('Pause it','pause'),
+                                     ('Play music','resume'),('Play music for me','resume'),('Can you play music for me','resume'),('Gaana pause karo','pause'),('Mute','mute'),
+                                     ('Can you play All the way home?',None),('What was the last song you played for me yesterday evening?',None),('Tell me a joke',None)])
+def test_short_media_commands_map_to_keys(text,key):
+    assert agent.media_command(text)==key
+
+
+def test_invented_song_resumes_but_named_song_plays():
+    call=lambda q:ToolCall(id='x',name='media.play',arguments={'query':q,'where':'spotify'})
+    assert agent.grounded(call('popular music'),['Play music for me']).name=='media.control'
+    assert agent.grounded(call('Mine'),['Play the music name, Mine','Play it for me']).name=='media.play'
+    assert agent.grounded(call('biryani recipe'),['YouTube pe biryani recipe chalao']).name=='media.play'

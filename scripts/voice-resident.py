@@ -47,7 +47,7 @@ def serve(script,model,folder):
                 if (stream.getframerate()!=16000 or stream.getnchannels()!=1 or stream.getsampwidth()!=2
                         or not 0<stream.getnframes()<=960000):raise ValueError('Invalid bounded audio')
             sys.argv=[str(script),'--audio',str(audio),'--model',str(model),'--device',DEVICE,
-                      '--language',request['language'],'--alignment','native']
+                      '--language',request['language'],'--alignment','native','--vocabulary',os.environ.get('NINJA_VOICE_VOCABULARY','[]')]
             value=module.main()
             frame={'id':request['id'],'value':value,'warm':warm,'recognition_ms':round((time.monotonic()-started)*1000),'device':device}
             encoded=json.dumps(frame,ensure_ascii=True)

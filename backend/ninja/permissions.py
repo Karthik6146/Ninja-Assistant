@@ -4,14 +4,18 @@ from contextlib import nullcontext
 from . import db
 from .agent_models import ToolContext
 
-DEFAULT_GRANTS={'system.read':True,'assistant.tasks':True,'assistant.memory':True,'file.read':True,'file.write':True,'assistant.workflows':True,'research.read':True,'app.open':True,'device.control':True,'files.personal':True,'email.read':True,'messages.read':True}
+DEFAULT_GRANTS={'system.read':True,'assistant.tasks':True,'assistant.memory':True,'file.read':True,'file.write':True,'assistant.workflows':True,'research.read':True,'app.open':True,'device.control':True,'files.personal':True,'email.read':True,'messages.read':True,'clipboard.read':True,'screen.read':True}
 SENSITIVE={'financial','security','privacy','destructive'}
 # Tools that only read. Once email or web text is in a conversation, every other tool needs the user's confirmation,
 # so instructions hidden in that text cannot act on their own.
 READS={'system.monitor','system.large_files','assistant.today','memory.search','file.find','file.list','file.read',
-       'research.search','research.deep','research.fetch','weather.now','youtube.search','gmail.list','gmail.read','whatsapp.recent','workflow.list'}
+       'research.search','research.deep','research.fetch','weather.now','video.describe','note.read','clipboard.read','screen.look','gmail.list','gmail.read','whatsapp.recent','workflow.list'}
 # file.read: shared documents can be written by anyone (downloads, attachments).
-UNTRUSTED={'email.read','messages.read','research.read','file.read'}
+UNTRUSTED={'email.read','messages.read','research.read','file.read','clipboard.read','screen.read'}
+# Low-risk actions the owner wants without a confirmation click even after untrusted text: the worst an injected
+# instruction can do with them is play a song, open an app or a personal file, or add a note or timer.
+# Web links, clipboard, file edits, memory and workflows still need confirmation.
+SMALL={'media.control','media.play','app.open','file.open','assistant.remind','assistant.add_task','note.add'}
 
 def grants(connection=None):
     with (db.connect() if connection is None else nullcontext(connection)) as c:row=c.execute("SELECT value FROM preferences WHERE key='assistant.permissions'").fetchone()
@@ -38,7 +42,7 @@ def decide(name,args,context,connection=None):
     if not tool:raise ValueError('Unknown tool')
     grant=grants(connection).get(tool.permission)
     if grant is False:return 'deny'
-    if tool.effect in SENSITIVE or grant=='ask' or (context.tainted and name not in READS):return 'confirm'
+    if tool.effect in SENSITIVE or grant=='ask' or (context.tainted and name not in READS|SMALL):return 'confirm'
     if tool.effect!='routine':return 'deny'
     return 'allow' if grant is True else 'deny'
 

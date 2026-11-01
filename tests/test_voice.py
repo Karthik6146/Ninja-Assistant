@@ -15,7 +15,7 @@ def test_resident_clipx_reuses_model_and_restarts_after_config_change(monkeypatc
     root=tmp_path/'clipx';root.mkdir();script=root/'transcribe-local.py'
     model=root/'model';model.mkdir();(model/'model.bin').touch()
     (root/'faster_whisper.py').write_text("from pathlib import Path\nimport os\nclass WhisperModel:\n def __init__(self,*args,**kw):\n  assert (kw['device'],kw['compute_type'])==('cuda','int8_float16') and kw['local_files_only']\n  assert os.environ['HF_HUB_OFFLINE']=='1' and os.environ['TRANSFORMERS_OFFLINE']=='1'\n  p=Path(__file__).with_name('loads.txt');p.write_text(p.read_text()+'1' if p.exists() else '1')\n")
-    script.write_text("import argparse\nfrom pathlib import Path\ndef main():\n from faster_whisper import WhisperModel\n p=argparse.ArgumentParser();p.add_argument('--audio');p.add_argument('--model');p.add_argument('--device');p.add_argument('--language');p.add_argument('--alignment');a=p.parse_args()\n assert Path(a.audio).is_file() and a.alignment=='native'\n WhisperModel(a.model,device=a.device,compute_type='int8' if a.device=='cpu' else 'int8_float16',cpu_threads=4,local_files_only=True)\n return {'words':[{'text':a.language,'confidence':.8}], 'language':a.language}\n")
+    script.write_text("import argparse\nfrom pathlib import Path\ndef main():\n from faster_whisper import WhisperModel\n p=argparse.ArgumentParser();p.add_argument('--audio');p.add_argument('--model');p.add_argument('--device');p.add_argument('--language');p.add_argument('--alignment');p.add_argument('--vocabulary');a=p.parse_args()\n import json\n assert Path(a.audio).is_file() and a.alignment=='native' and 'Jarvis' in json.loads(a.vocabulary)\n WhisperModel(a.model,device=a.device,compute_type='int8' if a.device=='cpu' else 'int8_float16',cpu_threads=4,local_files_only=True)\n return {'words':[{'text':a.language,'confidence':.8}], 'language':a.language}\n")
     monkeypatch.setattr(voice,'components',lambda:(root,Path(sys.executable),script,model))
     monkeypatch.setattr(voice,'DATA',tmp_path/'data');voice.DATA.mkdir()
     def run(args,*a,**kw):
@@ -180,3 +180,17 @@ def test_invalid_config_during_active_transcription_does_not_close_engine(monkey
     monkeypatch.setattr(voice,'shutdown',lambda:pytest.fail('Another request closed the active recognizer'))
     with FileLock(voice.DATA/'voice-cpu.lock',timeout=0):
         with pytest.raises(Timeout):voice.transcribe(tmp_path/'input.wav','en')
+
+
+def test_clipx_turbo_is_preferred_and_shown_by_name(monkeypatch,tmp_path):
+    snapshot=tmp_path/'.models/whisper/models--dropbox-dash--faster-whisper-large-v3-turbo/snapshots/abc123';snapshot.mkdir(parents=True);(snapshot/'model.bin').write_bytes(b'x')
+    monkeypatch.setattr(voice,'caption_config',lambda:(tmp_path,tmp_path/'python.exe',tmp_path/'transcribe.py'))
+    monkeypatch.delenv('JARVIS_VOICE_MODEL',raising=False)
+    assert voice.components()[3]==snapshot and voice.status()['model']=='faster-whisper-large-v3-turbo'
+
+
+def test_noise_read_as_the_hint_list_is_uncertain():
+    words=lambda text:[{'text':w,'confidence':0.95} for w in text.split()]
+    assert voice.uncertain_transcript(words('Jarvis, joke, resume, screenshot, volume'),'auto')
+    assert not voice.uncertain_transcript(words('open the YouTube video file'),'auto')
+    assert not voice.uncertain_transcript(words('Mera resume dhundho'),'auto')

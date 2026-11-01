@@ -32,6 +32,14 @@ def unload_local_models():
     except httpx.HTTPError:raise ValueError('Could not release Ollama GPU memory; stop active chats or restart Ollama before retrying') from None
 
 
+def release_local_model():
+    """Unload only Ninja's chat model from Ollama; other models the owner runs stay as they are."""
+    try:
+        with httpx.Client(base_url=ollama_url(),timeout=10,trust_env=False) as client:
+            client.post('/api/generate',json={'model':local_model(),'keep_alive':0})
+    except (httpx.HTTPError,ValueError):pass  # Ollama already stopped or not configured.
+
+
 def warm_local_model():
     """Preload the chat model when a voice session starts; skipped while media work owns the GPU."""
     from filelock import FileLock, Timeout
@@ -42,6 +50,22 @@ def warm_local_model():
             client.post('/api/generate',json={'model':local_model(),'keep_alive':-1,'options':{'num_ctx':8192}})
         return True
     except (Timeout,httpx.HTTPError):return False
+
+
+def see(prompt,images,*,max_tokens=400):
+    """One local vision answer about base64 JPEG images. Same num_ctx and keep_alive as agent_turn, so the chat model is not reloaded."""
+    from filelock import FileLock, Timeout
+    from .config import DATA
+    body={'model':local_model(),'stream':False,'think':False,'keep_alive':-1,'options':{'num_ctx':8192,'num_predict':max_tokens,'temperature':0},
+          'messages':[{'role':'user','content':prompt,'images':images}]}
+    try:
+        with FileLock(DATA/'model.lock',timeout=20),httpx.Client(trust_env=False,timeout=httpx.Timeout(180,connect=5)) as client:
+            value=client.post(ollama_url()+'/api/chat',json=body).raise_for_status().json()
+    except Timeout:raise ValueError('The model is busy with another step; ask again in a moment') from None
+    except httpx.HTTPError:raise ValueError('The local model could not look at the picture; check that Ollama is running') from None
+    text=value.get('message',{}).get('content','').strip()
+    if not text:raise ValueError('The model returned no description')
+    return text
 
 
 def provider_status():
@@ -139,21 +163,32 @@ def public_addresses(url):
         raise ValueError('Private, loopback, reserved, and local network URLs are blocked')
     return u,addresses
 
-def extract(url):
+def extract(url,hops=3):
     u,addresses=public_addresses(url)
     # Pin the validated IP at connection time, preserving hostname TLS verification.
-    conn=http.client.HTTPSConnection(u.hostname,443,timeout=15,context=ssl.create_default_context())
+    import truststore
+    # Windows' certificate verifier: same strictness, but it fetches intermediates that some sites forget to send.
+    conn=http.client.HTTPSConnection(u.hostname,443,timeout=15,context=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT))
     sock=socket.create_connection((sorted(addresses)[0],443),timeout=15)
     conn.sock=conn._context.wrap_socket(sock,server_hostname=u.hostname)
     try:
         conn.request('GET',(u.path or '/')+('?' + u.query if u.query else ''),headers={'User-Agent':'NinjaAssistant/0.1','Accept':'text/html,text/plain'})
         response=conn.getresponse()
-        if response.status!=200: raise ValueError(f'Source returned {response.status}; redirects are not followed')
+        if response.status in (301,302,303,307,308) and response.getheader('Location') and hops:
+            from urllib.parse import urljoin
+            # Each hop goes through the same public-address check and pinning.
+            return extract(urljoin(url,response.getheader('Location')),hops-1)
+        if response.status!=200: raise ValueError(f'Source returned {response.status}')
         if not any(t in response.getheader('Content-Type','') for t in ('text/html','text/plain')): raise ValueError('Unsupported source type')
         raw=response.read(1_000_001)
         if len(raw)>1_000_000: raise ValueError('Source exceeds 1 MB limit')
-        parser=Text(); parser.feed(raw.decode('utf-8',errors='replace'))
-        excerpt=' '.join(p for p in parser.parts if p)[:16000]
+        html=raw.decode('utf-8',errors='replace')
+        import trafilatura
+        # Main article text without menus, footers and cookie banners; one paragraph per line.
+        excerpt=trafilatura.extract(html,url=url,include_comments=False,include_tables=True,deduplicate=True) or ''
+        if len(excerpt)<200:
+            parser=Text(); parser.feed(html); excerpt='\n'.join(p for p in parser.parts if p)
+        excerpt=excerpt[:16000]
         return {'url':url,'retrieved':datetime.now(timezone.utc).isoformat(),'excerpt':excerpt,'status':'retrieved','verification':'Source excerpt only; claims have not been independently verified'}
     finally: conn.close()
 
@@ -189,7 +224,7 @@ def _complete(prompt, provider='ollama', *, schema=None):
     return {'text':data['choices'][0]['message']['content'],'usage':data.get('usage',{}),'provider':'cloud'}
 
 
-def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048):
+def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048, retried=False):
     """Native local tool turn; partial text is provisional until done and validated."""
     from filelock import FileLock
     from .config import DATA
@@ -240,6 +275,15 @@ def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048):
                             value=chunk
                             value['message']={'content':text,'tool_calls':call_items}
                             break
+    except httpx.HTTPStatusError as error:
+        # Qwen sometimes writes a tool call Ollama cannot parse (seen with Windows paths such as D:\Notes\ideas.txt).
+        # One retry with forward slashes in the newest user turn, which Windows paths accept too.
+        if error.response.status_code==500 and not retried:
+            last=max((i for i,m in enumerate(messages) if m.get('role')=='user'),default=None)
+            if last is not None and '\\' in messages[last].get('content',''):
+                fixed=messages[:last]+[dict(messages[last],content=messages[last]['content'].replace('\\','/'))]+messages[last+1:]
+                return agent_turn(fixed,schemas,job=job,on_text=on_text,max_tokens=max_tokens,retried=True)
+        raise ValueError('Local model request failed. Start Ollama or choose an installed tool-capable model, then retry') from None
     except httpx.HTTPError:raise ValueError('Local model request failed. Start Ollama or choose an installed tool-capable model, then retry') from None
     if db.cancelled(job):raise media.Cancelled()
     if not isinstance(value,dict) or value.get('done') is not True or value.get('error'):raise ValueError('Local model did not finish a usable tool response')
@@ -267,6 +311,25 @@ def _wikipedia(client,query):
     return {'provider':'Wikipedia','sources':[{'title':title,'url':url} for title,url in zip(value[1],value[3])]} if value[3] else None
 
 
+def _duckduckgo(client,query):
+    import re
+    from html import unescape
+    from urllib.parse import parse_qs,urlsplit
+    response=client.get('https://html.duckduckgo.com/html/',params={'q':query},headers={'User-Agent':'NinjaAssistant/0.1 (local user-requested research)'})
+    response.raise_for_status()
+    if len(response.content)>2000000:raise ValueError('Search response exceeds size limit')
+    def text(markup):return ' '.join(unescape(re.sub(r'<[^>]+>','',markup)).split())
+    sources=[]
+    # Result links are DuckDuckGo redirects carrying the address in uddg; ads use another link form and are skipped.
+    for block in response.text.split('class="result results_links')[1:]:
+        link=re.search(r'class="result__a" href="([^"]+)"[^>]*>(.*?)</a>',block,re.S)
+        target=(parse_qs(urlsplit(unescape(link[1])).query).get('uddg') or [''])[0] if link else ''
+        if not target.startswith('https://'):continue
+        snippet=re.search(r'class="result__snippet"[^>]*>(.*?)</a>',block,re.S)
+        sources.append({'title':text(link[2]) or 'Source','url':target,'snippet':text(snippet[1])[:400] if snippet else ''})
+    return {'provider':'DuckDuckGo','sources':sources[:8]} if sources else None
+
+
 def _bing(client,query):
     import xml.etree.ElementTree as ET
     response=client.get('https://www.bing.com/search',params={'q':query,'format':'rss'},headers={'User-Agent':'NinjaAssistant/0.1 (local user-requested research)'})
@@ -283,7 +346,7 @@ def search_sources(query,web_first=False):
     query=query.strip()
     if not query or len(query)>200:raise ValueError('Use a short public research query')
     with httpx.Client(timeout=15,follow_redirects=False,trust_env=False) as client:
-        for provider in ((_bing,_wikipedia) if web_first else (_wikipedia,_bing)):
+        for provider in ((_duckduckgo,_bing,_wikipedia) if web_first else (_wikipedia,_duckduckgo,_bing)):
             try:
                 found=provider(client,query)
                 if found:return found
@@ -302,7 +365,25 @@ def _bing_news(client,query):
         # News links are Bing click-throughs; the article address is in their url parameter.
         target=(parse_qs(urlsplit(item.findtext('link') or '').query).get('url') or [''])[0]
         if target.startswith('https://'):sources.append({'title':item.findtext('title') or 'Source','url':target,'snippet':(item.findtext('description') or '')[:400],'date':item.findtext('pubDate') or ''})
+    from email.utils import parsedate_to_datetime
+    def when(source):
+        try:return parsedate_to_datetime(source['date']).timestamp()
+        except (TypeError,ValueError):return 0
+    # Newest first: "latest" questions otherwise get last year's articles.
+    sources.sort(key=when,reverse=True)
     return {'provider':'Bing News RSS','sources':sources[:6]} if sources else None
+
+
+def top_news():
+    """India top stories from Google News' public RSS: headline, outlet and time. A query such as "today's news"
+    sent to a search engine returned unrelated items (a vaccine story, a football transfer, a quote)."""
+    import xml.etree.ElementTree as ET
+    with httpx.Client(timeout=15,follow_redirects=False,trust_env=False) as client:
+        response=client.get('https://news.google.com/rss',params={'hl':'en-IN','gl':'IN','ceid':'IN:en'},headers={'User-Agent':'NinjaAssistant/0.1 (local user-requested research)'})
+    response.raise_for_status()
+    if len(response.content)>2000000:raise ValueError('News response exceeds size limit')
+    items=ET.fromstring(response.content).findall('./channel/item')[:8]
+    return {'provider':'Google News top stories (India)','sources':[{'title':i.findtext('title') or '','date':i.findtext('pubDate') or ''} for i in items if i.findtext('title')]}
 
 
 def web_search(query,news=False):

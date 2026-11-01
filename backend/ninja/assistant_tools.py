@@ -131,13 +131,17 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 class Reminder(Strict):
     text:str=Field(min_length=1,max_length=200)
-    when:str=Field(min_length=1,max_length=60)
+    when:str=Field(default='',max_length=60,description='ISO date/time for a clock time, e.g. 2026-10-31T19:00')
+    in_minutes:float|None=Field(default=None,gt=0,le=10080,description='For timers and "in 20 minutes" / "2 ghante baad": minutes from now instead of when')
 def remind(params,timeout,context):
     from . import assistant_events
+    if params.in_minutes:
+        # A replayed step computes a slightly later time; the saved reminder is the same one.
+        return {'data':assistant_events.add(params.text,time.time()+params.in_minutes*60,context.idempotency_key,context=context,tolerance=600)}
     try:
         due=datetime.fromisoformat(params.when)
         if due.tzinfo is None:due=due.replace(tzinfo=ZoneInfo('Asia/Kolkata'))
-    except ValueError:raise ValueError('Use an ISO date/time. Times without an offset use Asia/Kolkata.') from None
+    except ValueError:raise ValueError('Give when as an ISO date/time (Asia/Kolkata), or in_minutes for a timer.') from None
     return {'data':assistant_events.add(params.text,due.timestamp(),context.idempotency_key,context=context)}
 tools.REGISTRY['assistant.remind']=tools.Tool('assistant.remind',Reminder,Result,'assistant.tasks',5,remind,'routine',True,True)
 
@@ -262,4 +266,4 @@ tools.REGISTRY['file.undo']=tools.Tool('file.undo',UndoText,Result,'file.write',
 
 
 # Read-only research tools register themselves on import.
-from . import research_tools,device_tools,gmail,whatsapp  # noqa: E402,F401
+from . import research_tools,device_tools,gmail,whatsapp,watch  # noqa: E402,F401

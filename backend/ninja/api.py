@@ -29,8 +29,10 @@ async def lifespan(app):
     whatsapp.start()
     try:yield
     finally:
-        from . import neural_voice,listener
+        from . import adapters,neural_voice,listener
         whatsapp.stop();voice.shutdown();neural_voice.shutdown();listener.shutdown()
+        # Turning Jarvis off gives the GPU back (games): Qwen is otherwise kept loaded by keep_alive -1.
+        adapters.release_local_model()
 
 app=FastAPI(title='Ninja Assistant',lifespan=lifespan)
 app.include_router(assistant_router)

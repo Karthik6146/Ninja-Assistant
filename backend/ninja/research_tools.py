@@ -1,16 +1,16 @@
-"""Read-only research tools for Jarvis: weather, multi-page web research and YouTube search.
+"""Read-only research tools for Jarvis: weather and multi-page web research.
 
 Reddit is not included: it blocks anonymous access, and its official API needs an app the owner registers.
 
-Nothing here posts, signs in on the user's behalf beyond the already connected YouTube channel, or changes data.
+Nothing here posts, signs in on the user's behalf, or changes data.
 """
-import time
+import re,time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime,timezone
 from typing import Literal
 import httpx
 from pydantic import Field
 from . import adapters,tools
-from . import youtube_auth as auth
 from .agent_models import Strict
 
 AGENT='NinjaAssistant/0.1 (personal local assistant; read-only)'
@@ -67,46 +67,47 @@ class Research(Strict):
     recent:bool=Field(default=False,description='True for news, latest updates, prices, releases or anything time-sensitive')
 
 
+def relevant(text,query,limit=2400):
+    """The paragraphs that mention the most query words, kept in page order, within limit characters."""
+    words={w for w in re.findall(r'\w+',query.lower()) if len(w)>2}
+    paragraphs=[p.strip() for p in text.split('\n') if len(p.strip())>=40]
+    keep=set();size=0
+    for i in sorted(range(len(paragraphs)),key=lambda i:-sum(w in paragraphs[i].lower() for w in words)):
+        if size+len(paragraphs[i])<=limit:keep.add(i);size+=len(paragraphs[i])
+    return '\n'.join(paragraphs[i] for i in sorted(keep))
+
+
+def read(url):
+    try:return (adapters.extract(url).get('excerpt') or '').strip()
+    except (ValueError,OSError):return ''
+
+
+# Words that ask for news without naming a topic ("tell me today's news", "aaj ki khabar batao").
+GENERAL_NEWS={'tell','me','today','todays','s','the','top','latest','news','headlines','headline','what','is','are','whats','in','of','aaj','ki','ka','kya','hai','khabar','khabrein','batao','give','any','new','current','india','indian'}
+
+
 def deep(params,timeout,context):
-    """Search, then read up to three pages. Unreadable pages fall back to the feed summary, labelled as such."""
+    """Search, then read the top pages in parallel and keep three. Unreadable pages fall back to the search snippet, labelled as such."""
+    if params.recent and set(re.findall(r'[a-z]+',params.query.lower()))<=GENERAL_NEWS:
+        try:
+            found=adapters.top_news()
+            return {'data':found|{'query':params.query,'retrieved':time.time(),'sources':[dict(s,n=i+1) for i,s in enumerate(found['sources'])],
+                    'instructions':'These are headlines only. Name the three or four most important in a sentence or two; offer to look into any of them.'}}
+        except (httpx.HTTPError,ValueError):pass  # fall through to a normal news search
     found=adapters.web_search(params.query,news=params.recent);sources=[];unread=[]
-    for item in found['sources'][:6]:
+    candidates=found['sources'][:6]
+    with ThreadPoolExecutor(len(candidates) or 1) as pool:pages=list(pool.map(read,[item['url'] for item in candidates]))
+    for item,page in zip(candidates,pages):
         if len(sources)==3:break
-        try:excerpt=(adapters.extract(item['url']).get('excerpt') or '').strip()
-        except (ValueError,OSError):excerpt=''
-        # Script-heavy pages often yield only their title; a feed summary is better evidence than that.
-        kind='page'
+        # Script-heavy pages often yield only their title; the search snippet is better evidence than that.
+        excerpt,kind=relevant(page,params.query),'page'
         if len(excerpt)<200 and item.get('snippet'):excerpt,kind=item['snippet'],'summary'
         if len(excerpt)<40:unread.append(item['url']);continue
-        sources.append({'n':len(sources)+1,'title':item.get('title') or item['url'],'url':item['url'],'date':item.get('date',''),'read':kind,'excerpt':excerpt[:2400]})
+        sources.append({'n':len(sources)+1,'title':item.get('title') or item['url'],'url':item['url'],'date':item.get('date',''),'read':kind,'excerpt':excerpt})
     if not sources:raise ValueError('No search result could be read. Try a different query or give me a public link.')
     return {'data':{'query':params.query,'provider':found['provider'],'sources':sources,'unread':unread,'retrieved':time.time(),
         'instructions':'Answer from these excerpts only and cite them as [1], [2], [3]. Say what the sources do not cover.'}}
 
 
-class YouTubeQuery(Strict):
-    query:str=Field(min_length=1,max_length=160)
-    order:Literal['relevance','viewCount','date']='relevance'
-
-
-def youtube(params,timeout,context):
-    connected=[c for c in auth.channels() if c.get('connected')]
-    if not connected:raise ValueError('Connect a YouTube channel on the YouTube page first; search uses its read-only access.')
-    channel=connected[0]
-    try:
-        with auth.target(channel['connection'],channel['id']):
-            found=auth.api('GET','search',params={'part':'snippet','type':'video','q':params.query,'maxResults':8,'order':params.order,'regionCode':'IN'})
-            ids=[x['id']['videoId'] for x in found.get('items',[]) if x.get('id',{}).get('videoId')]
-            videos=auth.api('GET','videos',params={'part':'snippet,statistics,contentDetails','id':','.join(ids)}) if ids else {'items':[]}
-    except ValueError as error:
-        raise ValueError(str(error)+'. If this keeps happening, reconnect the channel on the YouTube page; Google expires sign-ins of apps in testing mode after 7 days.') from None
-    def entry(v):
-        s,stats=v['snippet'],v.get('statistics',{})
-        return {'title':s['title'],'channel':s.get('channelTitle',''),'views':int(stats.get('viewCount',0)),'likes':int(stats.get('likeCount',0)),
-                'published':s.get('publishedAt','')[:10],'duration':v.get('contentDetails',{}).get('duration',''),'url':'https://www.youtube.com/watch?v='+v['id']}
-    return {'data':{'query':params.query,'videos':[entry(v) for v in videos.get('items',[])],'retrieved':time.time(),
-        'limitation':'YouTube search results for region IN; counts are public observations at retrieval time.'}}
-
-
-for name,schema,callback,seconds in (('weather.now',Weather,weather,20),('research.deep',Research,deep,60),('youtube.search',YouTubeQuery,youtube,30)):
+for name,schema,callback,seconds in (('weather.now',Weather,weather,20),('research.deep',Research,deep,60)):
     tools.REGISTRY[name]=tools.Tool(name,schema,Result,'research.read',seconds,callback,'routine',True,True)

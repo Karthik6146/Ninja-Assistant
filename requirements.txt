@@ -11,5 +11,7 @@ python-dotenv==1.1.0
 pytest==8.3.5
 pytest-cov==6.1.1
 yt-dlp[default]==2026.8.19
+trafilatura==2.3.1
+truststore==0.10.4
 
 tzdata==2026.5

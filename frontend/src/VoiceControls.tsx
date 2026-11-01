@@ -5,7 +5,7 @@ import Icon from './Icons';
 
 type Status={ready:boolean;message:string;voices:string[];default_voice?:string;live_ready?:boolean};
 type Transcript={text:string;uncertain?:boolean};
-type Props={api:API;onText:(text:string)=>void;reply:string;replyKey?:string;draft?:string;turnKey?:string;thinking?:boolean;failure?:string;contextKey?:string|number;language?:string;onLanguage?:(language:string)=>void;onUtterance?:(text:string,signal:AbortSignal)=>Promise<void>;onInterrupt?:()=>void};
+type Props={api:API;onText:(text:string)=>void;reply:string;replyKey?:string;draft?:string;turnKey?:string;thinking?:boolean;failure?:string;contextKey?:string|number;language?:string;onLanguage?:(language:string)=>void;onUtterance?:(text:string,signal:AbortSignal)=>Promise<void>;onInterrupt?:()=>void;showText?:boolean;onShowText?:(value:boolean)=>void;announce?:string;announceKey?:string};
 type Speech={key:string;parts:string[];spoken:number;final:boolean;playing:boolean};
 export const acceptedTranscript=(result:Transcript)=>/[\p{L}\p{N}]/u.test(result.text)&&!result.uncertain;
 // Long sentences also break at commas (left piece ≥2 words, e.g. an opener like "जी सर,") so the first clause plays while Qwen keeps writing.
@@ -46,9 +46,9 @@ export function transcriptAction(result:Transcript,awake:boolean,verified:boolea
 }
 // Mic audio -> 16 kHz int16 frames of 512 samples, posted to the page for the live WebSocket.
 const PCM_WORKLET="class P extends AudioWorkletProcessor{constructor(){super();this.b=new Int16Array(512);this.n=0}process(i){const c=i[0][0];if(c){for(let k=0;k<c.length;k++){const v=Math.max(-1,Math.min(1,c[k]));this.b[this.n++]=v<0?v*32768:v*32767;if(this.n===512){this.port.postMessage(this.b.buffer,[this.b.buffer]);this.b=new Int16Array(512);this.n=0}}}return true}}registerProcessor('pcm16',P)";
-export default function VoiceControls({api,onText,reply,replyKey='',draft='',turnKey='',thinking=false,failure='',contextKey='',language:preferredLanguage,onLanguage,onUtterance,onInterrupt}:Props){
- const [status,setStatus]=useState<Status|null>(null),[state,setState]=useState('Ready to talk'),[localLanguage,setLanguage]=useState('hinglish'),[voice,setVoice]=useState(''),[error,setError]=useState(''),[session,setSession]=useState(false);
- const mounted=useRef(true),epoch=useRef(0),active=useRef(false),seenReply=useRef(replyKey),failures=useRef(0);
+export default function VoiceControls({api,onText,reply,replyKey='',draft='',turnKey='',thinking=false,failure='',contextKey='',language:preferredLanguage,onLanguage,onUtterance,onInterrupt,showText=false,onShowText,announce='',announceKey=''}:Props){
+ const [status,setStatus]=useState<Status|null>(null),[state,setState]=useState('Ready to talk'),[localLanguage,setLanguage]=useState('en'),[voice,setVoice]=useState(''),[error,setError]=useState(''),[session,setSession]=useState(false);
+ const mounted=useRef(true),epoch=useRef(0),active=useRef(false),seenReply=useRef(replyKey),seenAnnounce=useRef(announceKey),failures=useRef(0);
  const recorder=useRef<MediaRecorder|null>(null),stream=useRef<MediaStream|null>(null),audio=useRef<HTMLAudioElement|null>(null),context=useRef<AudioContext|null>(null),timer=useRef<ReturnType<typeof setInterval>|null>(null),resumeTimer=useRef<ReturnType<typeof setTimeout>|null>(null),url=useRef('');
  const request=useRef<AbortController|null>(null),submission=useRef<AbortController|null>(null);
  const [wakeMode,setWakeMode]=useState(()=>{try{return localStorage.getItem('jarvis-wake-word')==='1'}catch{return false}});
@@ -99,6 +99,10 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
    const ctx=new AudioContext({sampleRate:16000}),module=URL.createObjectURL(new Blob([PCM_WORKLET],{type:'text/javascript'}));
    await ctx.audioWorklet.addModule(module);URL.revokeObjectURL(module);
    const node=new AudioWorkletNode(ctx,'pcm16'),source=ctx.createMediaStreamSource(media),meter=ctx.createAnalyser();meter.fftSize=512;source.connect(node);source.connect(meter);micMeter.current=meter;
+   // The socket is authorised only by the session cookie, and sessions live in server memory: renew it so a
+   // restarted server does not refuse the voice connection (403) while every token-header request still works.
+   await api('/session','POST',{token:sessionStorage.getItem('ninja-token')||''}).catch(()=>{});
+   if(!mounted.current||!active.current){media.getTracks().forEach(t=>t.stop());void ctx.close();return}
    const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/assistant/voice/live');ws.binaryType='arraybuffer';
    live.current={ws,ctx,media,node};
    // Without barge-in the mic is muted while Jarvis talks, so speakers cannot feed his own voice back.
@@ -137,7 +141,6 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
  function resume(delay=350){if(live.current){setState(listeningLabel());idleLater();return}const turn=epoch.current;if(resumeTimer.current)clearTimeout(resumeTimer.current);resumeTimer.current=setTimeout(()=>{if(mounted.current&&active.current&&turn===epoch.current)void listen(true)},delay)}
  useEffect(()=>{mounted.current=true;api<Status>('/assistant/voice').then(s=>{if(mounted.current){setStatus(s);let saved='';try{saved=localStorage.getItem('jarvis-neural-voice')||''}catch{}setVoice(s.voices.includes(saved)?saved:s.default_voice||s.voices[0]||'')}}).catch(e=>{if(mounted.current)setError(String(e))});return()=>{mounted.current=false;end()}},[]);
  useEffect(()=>{end();seenReply.current=replyKey},[contextKey]);
- useEffect(()=>{function hidden(){if(document.hidden&&!wake.current)end()}document.addEventListener('visibilitychange',hidden);return()=>document.removeEventListener('visibilitychange',hidden)},[]);
  useEffect(()=>{if(active.current&&failure){end();setError(failure)}},[failure]);
  async function listen(automatic:boolean){
   if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){end();setError('Open Ninja on localhost in a browser with microphone access.');return}
@@ -156,7 +159,7 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
     setState('Understanding you');const controller=new AbortController();request.current=controller;
     try{
      const body=new FormData();const ext=recording.mimeType.includes('ogg')?'ogg':recording.mimeType.includes('mp4')?'mp4':'webm';body.append('file',new Blob(chunks,{type:recording.mimeType}),'voice.'+ext);
-     const response=await fetch('/api/assistant/voice/transcribe?language='+(latest.current.language==='auto'?'auto':'hinglish'),{method:'POST',signal:controller.signal,headers:{'X-Ninja-Token':sessionStorage.getItem('ninja-token')||''},body});const result=await response.json();if(!response.ok)throw new Error(result.detail||'I could not hear that clearly. Please repeat.');if(!mounted.current||turn!==epoch.current)return;
+     const response=await fetch('/api/assistant/voice/transcribe?language=auto',{method:'POST',signal:controller.signal,headers:{'X-Ninja-Token':sessionStorage.getItem('ninja-token')||''},body});const result=await response.json();if(!response.ok)throw new Error(result.detail||'I could not hear that clearly. Please repeat.');if(!mounted.current||turn!==epoch.current)return;
      // Standby phrases without the wake word are discarded, never shown or sent.
      if(active.current)await handleTranscript(result,false);
      else{setError('');latest.current.onText(result.text);setState('Transcript ready')}
@@ -209,6 +212,11 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
   if(!thinking&&reply&&replyKey&&replyKey!==seenReply.current){seenReply.current=replyKey;enqueue(replyKey,speechParts(reply),true)}
   else if(thinking&&draft&&turnKey)enqueue(turnKey,draftSentences(draft),false);
  },[replyKey,reply,draft,turnKey,thinking,voice]);
+ // A due reminder is spoken once Jarvis is between turns; with no voice session the Windows notification covers it.
+ useEffect(()=>{
+  if(!active.current){seenAnnounce.current=announceKey;return}
+  if(voice&&announce&&announceKey&&announceKey!==seenAnnounce.current&&!thinking&&!queue.current.playing){seenAnnounce.current=announceKey;release();enqueue(announceKey,speechParts(announce),true)}
+ },[announceKey,announce,thinking,voice,state]);
  // Jarvis's own voice is metered through a context created on the Talk click, so autoplay rules never silence it.
  function meterPlayback(player:HTMLAudioElement){const ctx=outCtx.current;if(!ctx||ctx.state!=='running'||!outMeter.current)return;try{ctx.createMediaElementSource(player).connect(outMeter.current)}catch{}}
  function start(){
@@ -243,7 +251,7 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
     <div className="voiceStage">
      {orb()}
      <p className="voiceState" role="status" aria-live="polite">{muted?'Microphone muted':state}</p>
-     <div className="captions">{heard&&<p className="heard">{heard}</p>}{saying&&<p className="saying">{saying}</p>}</div>
+     <div className="captions">{showText&&heard&&<p className="heard">{heard}</p>}{showText&&saying&&<p className="saying">{saying}</p>}</div>
      {error&&<p role="alert" className="voiceError">{error}</p>}
     </div>
     <div className="voiceActions">
@@ -253,7 +261,8 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
     </div>
     {timing&&<small className="voiceTiming">Last turn: {timing}</small>}
     {panelOpen&&<div className="voiceSettings" role="group" aria-label="Voice settings">
-     <label>Reply language<select value={latest.current.language} onChange={e=>{setLanguage(e.target.value);onLanguage?.(e.target.value)}}><option value="hinglish">Hinglish (Hindi + English)</option><option value="en">English</option><option value="hi">Hindi</option><option value="auto">Other languages / automatic</option></select></label>
+     <label>Reply language<select value={latest.current.language} onChange={e=>{setLanguage(e.target.value);onLanguage?.(e.target.value)}}><option value="en">English</option><option value="hi">Hindi</option><option value="hinglish">Hinglish (Hindi + English)</option><option value="auto">Other languages / automatic</option></select></label>
+     <label className="libraryCheck"><input type="checkbox" checked={showText} onChange={e=>onShowText?.(e.target.checked)}/>Show text while Jarvis listens and talks. Off: he just speaks; the full conversation stays in the chat.</label>
      <label>Voice<select value={voice} onChange={e=>{setVoice(e.target.value);try{localStorage.setItem('jarvis-neural-voice',e.target.value)}catch{}}}>{status?.voices.map(v=><option key={v}>{v}</option>)}</select></label>
      <label className="libraryCheck"><input type="checkbox" checked={wakeMode} onChange={e=>{setWakeMode(e.target.checked);try{localStorage.setItem('jarvis-wake-word',e.target.checked?'1':'0')}catch{}}}/>Wake word: wait in standby until you say “Hey Jarvis”. Other speech is discarded locally.</label>
      <label className="libraryCheck"><input type="checkbox" checked={bargeIn} onChange={e=>{setBargeIn(e.target.checked);try{localStorage.setItem('jarvis-barge-in',e.target.checked?'1':'0')}catch{}}}/>Interrupt Jarvis by talking. Turn off if your speakers make him interrupt himself.</label>
