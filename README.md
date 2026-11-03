@@ -1,17 +1,18 @@
 <div align="center">
 
-<img src="docs/readme/logo.svg" width="120" alt="Ninja Assistant logo: an arc-reactor ring">
+<img src="docs/readme/logo.svg" width="112" alt="Ninja logo: a cyan arc-reactor ring with a solid core and three spokes">
 
 # Ninja Assistant
 
-**A local-first, JARVIS-style voice assistant for Windows that talks in English, Hindi and Hinglish, and actually does things: your PC, your inbox, your WhatsApp, your YouTube channels.**
+**Your own Jarvis, on your PC. A private voice assistant for Windows that talks in English, Hindi and Hinglish, and actually does things: opens apps, finds files, researches the web, reads your mail and reminds you. Nothing you say leaves your computer.**
 
-![Windows](https://img.shields.io/badge/Windows-11-0078D4?logo=windows&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Ollama](https://img.shields.io/badge/LLM-Qwen%203.5%209B%20via%20Ollama-000000?logo=ollama&logoColor=white)
+[**Website**](https://karthik6146.github.io/Ninja-Assistant/) · [**Download**](https://github.com/Karthik6146/Ninja-Assistant/releases/latest) · [User guide](docs/user-guide.md) · [Jarvis guide](docs/jarvis-guide.md)
+
+![Release](https://img.shields.io/github/v/release/Karthik6146/Ninja-Assistant?color=3ccff2&label=release)
+![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
 ![Local first](https://img.shields.io/badge/runs-100%25%20local-3ccff2)
+![LLM](https://img.shields.io/badge/LLM-Qwen%203.5%20via%20Ollama-000000?logo=ollama&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-4ade80)
 
 </div>
 
@@ -19,9 +20,9 @@
 
 ## What it is
 
-Ninja Assistant runs entirely on your own PC. **Jarvis**, its assistant, is a calm British butler who calls you "sir", listens for **"Hey Jarvis"**, lets you talk over him, and answers in the language you choose, switching mid-conversation when you say so.
+Ninja runs entirely on your own PC. **Jarvis**, its assistant, is a calm British butler who calls you "sir", listens for **"Hey Jarvis"**, lets you talk over him, and answers in the language you choose, switching mid-conversation when you say so.
 
-The speech recognition, the language model and the voice all run locally on your GPU. Nothing is sent to a cloud AI.
+Speech recognition, the language model and the voice all run locally. There is no Ninja server, no account and no subscription. Setup is one double-click: a wizard checks your PC and installs the model that fits it.
 
 | Ask Jarvis… | What happens |
 |---|---|
@@ -29,26 +30,28 @@ The speech recognition, the language model and the voice all run locally on your
 | "Research the best microphones under ₹5000" | Searches the web, reads up to 3 pages, answers with sources |
 | "VLC kholo" · "volume badhao" · "next song" | Opens any Start-menu app or Settings page; controls media and volume |
 | "Find my Valorant clip and open it" | Searches Desktop, Documents, Downloads, Videos, Pictures and Music |
+| "Check CPU and memory" | Live CPU, memory, disk and the largest files |
 | "Any new emails?" | Reads your connected Gmail accounts (read-only) |
 | "Koi WhatsApp message aaya?" | Reads WhatsApp Desktop notifications (read-only) |
-| "Remind me tomorrow at 7 PM…" | Reminders, today's tasks and saved preferences |
-| "YouTube pe Minecraft shorts trending kya hai?" | YouTube search with views and likes |
+| "Remind me tomorrow at 7 PM…" | Reminders, a Today list and saved preferences |
+| "Screen pe kya hai?" | Looks at your screen and describes it |
 
-Risky actions wait for an **Allow once / Deny** card. Once Jarvis has read email, web, message or shared-document text in a conversation, every further action in that conversation needs your click, so text written by strangers can't make Jarvis act on its own.
+Risky actions wait for an **Allow once / Deny** card. Once Jarvis has read email, web, message or document text in a conversation, every further action needs your click, so text written by strangers can't make him act on his own. Every action shows a receipt of the tool that actually ran.
 
-<!-- Screenshots: capture these from the running app (http://127.0.0.1:8000) and save them under docs/readme/, then remove this comment.
-<p align="center">
-  <img src="docs/readme/screenshot-jarvis.png" width="49%" alt="Jarvis conversation screen">
-  <img src="docs/readme/screenshot-voice.png" width="49%" alt="Voice mode with the arc-reactor orb">
-</p>
-<p align="center"><img src="docs/readme/screenshot-youtube.png" width="80%" alt="YouTube page"></p>
--->
+## New in 0.1
 
-## Numbers
+- **One-click install.** Download the zip, double-click **Install Ninja**. Python is installed for you if it's missing.
+- **Setup wizard.** Reads your memory, GPU and VRAM, CPU and free disk, rates every model **Fast**, **Slow** or **Too big** for your PC, and installs Ollama, the model and voice with live progress.
+- **Desktop app with a tray icon.** Its own window, signed in automatically. Closing it keeps Ninja running; the tray shows the server, model and GPU, frees GPU memory and toggles **Start with Windows**.
+- **Live model and GPU info.** The chat bar shows GPU temperature, load, VRAM and writing speed. An **i** card shows the model's size, quantization, context and measured speed; the model menu shows each model's VRAM use with an **Unload** button.
+- **A cleaner interface.** Graphite design, smoother motion, a clearer Activity page with task details, and a usage page with daily and per-model token counts.
+- **Safer web reading.** Jarvis only opens links you or a search result gave him; an invented address becomes a web search instead.
+
+## Performance
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/readme/latency-dark.svg">
-  <img src="docs/readme/latency-light.svg" alt="Voice latency from end of speech to Jarvis speaking: about 4.8 to 6 seconds before, about 3.5 seconds after phase 1, about 2.5 seconds after phase 2">
+  <img src="docs/readme/latency-light.svg" alt="Voice latency from end of speech to Jarvis speaking: about 4.8 to 6 seconds at first, about 3.5 seconds with streaming speech, about 2.5 seconds with live turn detection">
 </picture>
 
 <picture>
@@ -58,105 +61,119 @@ Risky actions wait for an **Allow once / Deny** card. Once Jarvis has read email
 
 | | |
 |---|---|
-| Tool-choice eval | **52** real requests in English, Hinglish and Hindi: voice **52/52**, typed **51/52** (`scripts/eval-tools.py`) |
-| Tests | **271** backend (pytest) · **33** frontend (vitest) |
-| Jarvis tools | **28**: research, weather, PC control, files, Gmail, WhatsApp, reminders, memory, YouTube, video workflows |
-| Languages | English, Hindi, Hinglish: understood mixed, replies switch on request |
-| Footprint | about 5.5 GB VRAM for the language model on an 8 GB RTX 4060; no background polling |
+| Right tool chosen | **52/52** spoken and **51/52** typed requests in English, Hinglish and Hindi (`scripts/eval-tools.py`) |
+| Voice reply | about **2.5 s** from the end of your sentence to Jarvis speaking (median) |
+| Writing speed | **38 tokens/s** with `qwen3.5:9b`, about **66 tokens/s** with a 4B model |
+| GPU memory | about **5.6 GB** of VRAM for `qwen3.5:9b` at Ninja's 8k context, on an 8 GB card |
+| Jarvis tools | **30**: research, weather, PC control, files, screen, Gmail, WhatsApp, reminders, memory, notes, clipboard |
+| Tests | **355** backend (pytest) · **38** frontend (vitest) |
 
-The numbers come from the project's own scripts on the development machine (RTX 4060 8 GB). Latency is the median of simulated voice turns through the running app; check it on your hardware with a real microphone.
+Measured with the project's own scripts and the app's live model card on the development PC (Ryzen 5 9600X, RTX 4060 8 GB). Latency is the median of simulated voice turns through the running app; check it on your hardware with the **i** card next to the model picker.
+
+## Install
+
+1. Download the latest **Ninja-x.y.z.zip** from [Releases](https://github.com/Karthik6146/Ninja-Assistant/releases/latest) and unzip it anywhere, for example `Documents\Ninja`.
+2. Double-click **Install Ninja**. It installs Python 3.11 with winget if needed, sets up Ninja and adds a **Ninja** shortcut to the Desktop and Start menu.
+3. Ninja opens the **setup wizard**. Press **Install Ollama**, download the recommended model, optionally set up voice, then **Start using Jarvis**.
+
+No terminal, no config files. You need Windows 10 or 11 with winget (built into current Windows). Run the wizard again any time from **Settings → AI model → Check PC and models**.
+
+| Your PC | Model the wizard picks | What to expect |
+|---|---|---|
+| NVIDIA GPU, 8 GB or more | `qwen3.5:9b` (6.6 GB) | The best experience; what Ninja is tuned on |
+| NVIDIA GPU, 6 GB | `qwen3.5:4b` (3.3 GB) | Quick replies and good tool use |
+| No dedicated GPU, 16 GB RAM | `qwen3.5:4b` | Runs on the CPU; replies take longer |
+| No dedicated GPU, 8 GB RAM | `qwen3.5:2b` (2.7 GB) | Basic chats and simple commands |
+
+Voice adds about 1.5 GB of speech models. Without a GPU the model runs on the CPU and is slower.
+
+### Using it
+
+Open **Ninja** from the Desktop or Start menu. It lives in the notification area:
+
+- **Click** the tray icon to open or focus the window. Closing the window keeps Ninja running in the background.
+- **Right-click** for the server and model status, the GPU line (temperature, load, VRAM, tokens/s), **Free GPU memory**, **Restart server**, **Start with Windows**, **Open data folder** and **Quit Ninja**.
+- Voice and the wake word work while the window is open; typed tasks and reminders keep running in the background.
+
+### Optional connections
+
+- **Gmail:** enable the Gmail API in your Google Cloud project, then **Settings → Gmail accounts**.
+- **WhatsApp:** install WhatsApp Desktop with notifications on.
+- **Cloud model:** set `CLOUD_ENABLED`, `CLOUD_URL`, `CLOUD_MODEL` and `CLOUD_API_KEY` in `.env`. Off by default; each run asks before sharing.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  subgraph Browser["Browser · React UI"]
-    UI[Jarvis screen + voice mode]
-    MIC[AudioWorklet 16 kHz mic]
+  subgraph App["Ninja window · React"]
+    UI[Jarvis chat + voice mode]
+    MIC[Mic, 16 kHz]
   end
+  TRAY[Tray app] -. starts, signs in .-> App
   subgraph Server["FastAPI · 127.0.0.1:8000"]
     API[REST + SSE + WebSocket]
     DB[(SQLite)]
+    SETUP[Setup wizard: specs, Ollama, model pull]
   end
   subgraph Workers["Workers"]
-    CTRL[Control lane: Jarvis turns]
-    MEDIA[Media lane: renders, uploads]
+    CTRL[Jarvis turns]
   end
   subgraph Local["Local models"]
-    LISTEN[Listener: Silero VAD · Smart Turn · openWakeWord]
-    STT[Whisper small · GPU]
-    LLM[Qwen 3.5 9B · Ollama]
-    TTS[Kokoro TTS · British voice]
+    LISTEN[Silero VAD · Smart Turn · openWakeWord]
+    STT[Whisper · GPU or CPU]
+    LLM[Qwen 3.5 · Ollama]
+    TTS[Kokoro · British voice]
   end
-  subgraph World["Your stuff"]
-    PC[Windows apps, media keys, files]
-    MAIL[Gmail API · read-only]
+  subgraph World["Your PC and accounts"]
+    PC[Apps, media, files, screen]
+    MAIL[Gmail · read-only]
     WA[WhatsApp notifications]
-    YT[YouTube Data + Analytics]
     WEB[Web search + Open-Meteo]
   end
-  MIC -- audio frames --> API --> LISTEN --> STT --> API
+  MIC -- audio --> API --> LISTEN --> STT --> API
   UI <--> API <--> DB
   API --> CTRL --> LLM
-  CTRL --> PC & MAIL & WA & YT & WEB
+  CTRL --> PC & MAIL & WA & WEB
   API --> TTS --> UI
-  MEDIA --> YT
+  SETUP --> LLM
 ```
 
 - **Turn-taking:** a resident listener runs Silero VAD v6, Smart Turn v3.2 (to decide whether you've finished your sentence) and openWakeWord. Whisper runs on the GPU and falls back to the CPU.
-- **Speech:** the reply streams while Qwen is still writing. The first clause (an opener like "Of course, sir.") is spoken while the rest is generated.
-- **Talking over Jarvis:** what you say while he's speaking is kept and answered when he finishes. "Stop", "ruko" or "bas karo" interrupt him at once.
-- **The agent loop:** a durable job queue and typed tools (Pydantic) with per-capability grants (Allowed / Ask first / Off).
-  - An honesty net catches replies that claim an action no tool performed.
-  - A history filter stops the model copying its own unbacked "please wait" replies.
-- **Credentials:** Google tokens are encrypted with Windows DPAPI. No account passwords are stored.
+- **Speech:** the reply streams while Qwen is still writing; the first clause is spoken while the rest is generated.
+- **Talking over Jarvis:** what you say while he speaks is kept and answered when he finishes. "Stop", "ruko" or "bas karo" interrupt him at once.
+- **The agent loop:** a durable job queue and typed tools (Pydantic) with per-capability grants (Allowed / Ask first / Off). An honesty net catches replies that claim an action no tool performed.
+- **Sign-in:** the app window gets a one-time code from the launcher and trades it for the local token, so the token never appears in a URL. Google tokens are encrypted with Windows DPAPI.
 
-## Install
+## Creator tools
 
-1. Download the latest **Ninja-x.y.z.zip** from [Releases](https://github.com/Karthik6146/Ninja-Assistant/releases) and unzip it anywhere, for example `Documents\Ninja`.
-2. Double-click **Install Ninja**. It installs Python 3.11 with winget if needed, sets up Ninja and adds a **Ninja** shortcut to the Desktop and Start menu.
-3. Ninja opens a **setup wizard** that reads your PC (memory, GPU and VRAM, CPU, free disk), recommends the largest model that runs fast on it, and installs Ollama, the model and optional voice for you, with progress.
-
-Needs Windows 10/11 with winget. An NVIDIA GPU with 6 GB or more is recommended; without one, models run on the CPU, slower. Run the wizard again any time from **Settings → AI model → Check PC and models**.
-
-Ninja lives in the notification area: closing the window keeps it running, clicking the tray icon reopens it, and the tray menu shows the server, GPU and model, frees GPU memory, toggles **Start with Windows** and quits.
-
-**From source** (needs Node 22+ too):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/install.ps1
-```
-
-`scripts/start.ps1` runs the server without the tray; open **http://127.0.0.1:8000** and connect with the token from `.env` (`NINJA_TOKEN`) or `data/access-token`.
-
-**Creator tools:** Studio (video editing and workflows) and YouTube publishing are off in the public build. Set `NINJA_CREATOR=1` in `.env` and restart to turn them on.
-
-**Optional connections**
-- **Gmail:** enable the Gmail API in your Google Cloud project, then **Settings → Gmail accounts**.
-- **WhatsApp:** install WhatsApp Desktop with notifications on.
-- **YouTube** (creator build): import your Google OAuth Desktop client on the **YouTube** page and connect a channel.
-
-More: [User guide](docs/user-guide.md) · [Jarvis guide](docs/jarvis-guide.md) · [Architecture](docs/architecture.md)
+Studio (video editing, clip workflows, automations) and YouTube publishing are the author's creator tools and are **off in the public build**: their pages, API routes, scheduler and Jarvis's workflow tools are all disabled. Set `NINJA_CREATOR=1` in `.env` and restart to turn them on.
 
 ## Development
 
-Build a release zip with `powershell -ExecutionPolicy Bypass -File scripts/make-release.ps1 -Version 1.0.0`; it prints the `gh release create` command to publish it.
-
 ```powershell
+powershell -ExecutionPolicy Bypass -File scripts/install.ps1   # from a clone: needs Node 22+ to build the UI
+powershell -ExecutionPolicy Bypass -File scripts/start.ps1     # server and workers, no tray
 .\.venv\Scripts\python.exe -m pytest                       # backend tests
 cd frontend; npm test; npm run build                       # frontend tests + build
 .\.venv\Scripts\python.exe scripts\eval-tools.py --spoken  # tool-choice eval (needs Ollama)
 .\.venv\Scripts\python.exe scripts\compare-models.py qwen3.5:9b qwen3:8b
 .\.venv\Scripts\python.exe scripts\review-conversations.py --hours 24   # where real conversations went wrong
+powershell -ExecutionPolicy Bypass -File scripts/make-release.ps1 -Version 1.0.0   # release zip + gh command
 ```
+
+With `scripts/start.ps1`, open **http://127.0.0.1:8000** and connect with the token from `.env` (`NINJA_TOKEN`) or `data/access-token`.
 
 | Path | What |
 |---|---|
 | `backend/ninja/agent.py` | Jarvis turn loop, prompts, honesty net, confirmations |
 | `backend/ninja/*_tools.py`, `gmail.py`, `whatsapp.py`, `desktop.py` | Tools |
-| `backend/ninja/youtube*.py`, `studio*.py` | YouTube upload engine, Studio workflows |
+| `backend/ninja/setup_routes.py`, `frontend/src/SetupWizard.tsx` | System check, model ratings and installs |
+| `backend/ninja/assistant_routes.py`, `frontend/src/ModelPicker.tsx` | Model picker, model card, GPU and speed |
+| `scripts/ninja-app.ps1`, `install-app.ps1`, `install.ps1` | Tray app, shortcuts, one-click install |
 | `scripts/listener-resident.py`, `voice-resident.py`, `neural-voice-resident.py` | Resident listener, Whisper and Kokoro processes |
 | `frontend/src/AssistantConsole.tsx`, `VoiceControls.tsx` | Jarvis screen and voice mode |
+| `backend/ninja/youtube*.py`, `studio*.py` | Creator tools (YouTube, Studio) |
+| `site/` | The project website, deployed to GitHub Pages |
 | `tests/`, `tests/evals/jarvis_tools.jsonl` | Tests and the tool-choice eval |
 
 ## Roadmap
@@ -164,18 +181,19 @@ cd frontend; npm test; npm run build                       # frontend tests + bu
 - [x] Voice: streaming speech, live turn detection, wake word, talking over Jarvis
 - [x] Agent: tool-choice eval, honesty net, confirmation cards
 - [x] PC control, research, weather, Gmail, WhatsApp
-- [ ] YouTube management: dashboard, upload and schedule, comment replies
+- [x] One-click install, setup wizard, tray app
+- [ ] Voice while the window is closed (run the listener from the tray)
 - [ ] Optional: move the real-time loop to Pipecat if latency needs to drop below about 1.5 s
 
 ## Limits
 
-- **Personal use:** single user on localhost; not a hosted service.
+- **Personal use:** single user on localhost; not a hosted service. Windows only.
 - **WhatsApp:** Jarvis only sees what notifications show: no history, nothing from muted chats.
 - **Gmail:** read-only. In Google's testing mode, sign-ins expire every 7 days.
-- **Model size:** a 9B local model makes mistakes. Every action shows its tool receipt, and the reply says when nothing was verified.
+- **Model size:** a local model makes mistakes, more so the smaller ones. Every action shows its tool receipt, and the reply says when nothing was verified.
 
 ## Credits
 
-Built on [Ollama](https://ollama.com) and Qwen, [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), [Silero VAD](https://github.com/snakers4/silero-vad), [Smart Turn](https://github.com/pipecat-ai/smart-turn), [openWakeWord](https://github.com/dscripka/openWakeWord), FastAPI and React. The setup downloads the models; none are bundled in this repository.
+Built on [Ollama](https://ollama.com) and Qwen, [faster-whisper](https://github.com/SYSTRAN/faster-whisper), [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) with [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M), [Silero VAD](https://github.com/snakers4/silero-vad), [Smart Turn](https://github.com/pipecat-ai/smart-turn), [openWakeWord](https://github.com/dscripka/openWakeWord), FastAPI and React. Setup downloads the models; none are bundled in this repository.
 
 The "Hey Jarvis" wake-word model from openWakeWord is licensed CC BY-NC-SA 4.0, **non-commercial use only**. Full third-party licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
