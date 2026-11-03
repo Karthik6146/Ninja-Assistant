@@ -6,17 +6,20 @@ Ninja is a private assistant for Windows. Everything runs on your PC: the langua
 
 1. Download the latest **Ninja-x.y.z.zip** from [Releases](https://github.com/Karthik6146/Ninja-Assistant/releases/latest).
 2. Unzip it somewhere permanent, for example `Documents\Ninja`. Ninja runs from this folder, so don't leave it in Downloads if you clean that folder.
-3. Double-click **Install Ninja**. A window shows three steps:
-   - **Python 3.11:** installed with winget if your PC doesn't have it.
+3. Double-click **Install Ninja**. A window shows six steps and installs whatever is missing:
+   - **Python 3.11:** downloaded from python.org if your PC doesn't have it.
    - **Ninja:** its Python packages are installed (a few minutes the first time).
+   - **Ollama:** the program that runs the AI model, downloaded from ollama.com if missing, then started.
+   - **AI model:** the largest Qwen model that runs well on your PC (see the table in the README), downloaded once.
+   - **Voice:** speech recognition, Jarvis's voice and the "Hey Jarvis" wake word, about 1.5 GB; on PCs with an NVIDIA GPU also about 2 GB of NVIDIA libraries.
    - **Shortcuts:** a **Ninja** shortcut is added to the Desktop and Start menu.
-4. Ninja opens by itself and shows the setup wizard.
+4. Ninja opens by itself, signed in and ready.
 
-You need Windows 10 or 11 with winget, which current Windows includes. If the installer stops, it says why; fix that and run **Install Ninja** again. Finished steps are skipped.
+You need Windows 10 or 11 and an internet connection for the downloads. If the installer stops, it says why; fix that and run **Install Ninja** again. Finished steps are skipped.
 
 ## Setup wizard
 
-The wizard opens on first start, and any time Ollama or a model is missing. Open it again from **Settings → AI model → Check PC and models**.
+**Install Ninja** already did all of this. The wizard opens only if Ollama or a model is missing, for example after uninstalling Ollama, and from **Settings → AI model → Check PC and models** when you want another model.
 
 1. **Your PC** shows your processor, memory, graphics card and VRAM, and free disk space.
 2. **Ollama, the model runner.** Press **Install Ollama** (or **Start Ollama** if it's installed but stopped). Ninja installs it with winget, which accepts Ollama's license for you.
@@ -104,8 +107,8 @@ The **Activity** button on other screens opens the same details in a side panel.
 
 | Problem | Fix |
 |---|---|
-| The installer says winget is missing | Install Python 3.11 from python.org, then run **Install Ninja** again |
-| The wizard can't install Ollama | Install it from [ollama.com/download](https://ollama.com/download), then press **Start Ollama** |
+| The installer stops at a download | Check the internet connection, then run **Install Ninja** again; finished steps are skipped |
+| "Ninja's server did not start" | The message shows the reason from `data\server.log`. Run **Install Ninja** again to repair the setup |
 | Replies are very slow | Pick a smaller model in the wizard, or check the **i** card: a model rated Slow runs partly on the CPU |
 | "The model is busy" | Another reply is running; wait for it to finish |
 | A game needs the GPU | Tray → **Free GPU memory** |

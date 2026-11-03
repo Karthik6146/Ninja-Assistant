@@ -57,13 +57,18 @@ function Start-Ninja {
     if (Test-Ninja) { return $true }
     # Windows PowerShell 5.1 does not quote an argument with spaces: a folder such as "D:\Karthik Shakyawar\..." reached
     # powershell.exe as -File D:\Karthik and the launcher exited at once, so the path is quoted here (install.ps1 too).
-    $script:server = Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',"`"$(Join-Path $PSScriptRoot 'start.ps1')`"" -WindowStyle Hidden -PassThru
-    $deadline = (Get-Date).AddSeconds(90)
+    # The launcher's output goes to data/server.log so a failure can say why instead of only that it failed.
+    New-Item -ItemType Directory -Force (Join-Path $ninjaRoot 'data') | Out-Null
+    $log = Join-Path $ninjaRoot 'data/server.log'
+    $script:server = Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File',"`"$(Join-Path $PSScriptRoot 'start.ps1')`"" -WindowStyle Hidden -PassThru -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+    $deadline = (Get-Date).AddSeconds(120)
     while (-not (Test-Ninja)) {
         if ($script:server.HasExited -or (Get-Date) -gt $deadline) {
             if (-not $script:server.HasExited) { & "$env:SystemRoot/System32/taskkill.exe" /PID $script:server.Id /T /F | Out-Null }
             $script:server = $null
-            [System.Windows.Forms.MessageBox]::Show("Ninja's server did not start. Run scripts/start.ps1 in a terminal to see why.", 'Ninja') | Out-Null
+            $why = @(Get-Content "$log.err", $log -ErrorAction SilentlyContinue | Where-Object { $_.Trim() } | Select-Object -Last 6) -join "`n"
+            if (-not $why) { $why = 'Run "Install Ninja" again to repair the setup.' }
+            [System.Windows.Forms.MessageBox]::Show("Ninja's server did not start.`n`n$why", 'Ninja') | Out-Null
             return $false
         }
         Start-Sleep -Milliseconds 500

@@ -38,10 +38,10 @@ Jarvis, a private voice and chat assistant that runs on your Windows PC with a l
 
 ### Install
 1. Download **Ninja-$Version.zip** below and unzip it anywhere, for example ``Documents\Ninja``.
-2. Double-click **Install Ninja**. It installs Python 3.11 if needed, sets up Ninja and adds a **Ninja** shortcut.
-3. Ninja opens a setup wizard that checks your PC (memory, GPU, disk), recommends a model that fits, and installs Ollama, the model and optional voice for you.
+2. Double-click **Install Ninja** and wait. It checks your PC and installs whatever is missing: Python 3.11, Ollama, the AI model that fits your memory and GPU, voice, and a **Ninja** shortcut. Nothing else to install first.
+3. Ninja opens, signed in and ready. Say "Hey Jarvis" or type.
 
-Needs Windows 10 or 11 with winget. An NVIDIA GPU with 6 GB or more is recommended; without one, models run slower on the CPU.
+Needs Windows 10 or 11 and an internet connection for the one-time downloads (a few GB). An NVIDIA GPU with 6 GB or more is recommended; without one, models run slower on the CPU. Run **Install Ninja** again to repair a setup.
 
 ### Use
 Open **Ninja** from the Desktop or Start menu. It lives in the notification area: closing the window keeps it running; right-click the tray icon to quit.

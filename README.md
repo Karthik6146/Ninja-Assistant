@@ -40,7 +40,7 @@ Risky actions wait for an **Allow once / Deny** card. Once Jarvis has read email
 
 ## New in 0.1
 
-- **One-click install.** Download the zip, double-click **Install Ninja**. Python is installed for you if it's missing.
+- **One-click install.** Download the zip, double-click **Install Ninja**. Python, Ollama, the model that fits your PC and voice are all installed for you.
 - **Setup wizard.** Reads your memory, GPU and VRAM, CPU and free disk, rates every model **Fast**, **Slow** or **Too big** for your PC, and installs Ollama, the model and voice with live progress.
 - **Desktop app with a tray icon.** Its own window, signed in automatically. Closing it keeps Ninja running; the tray shows the server, model and GPU, frees GPU memory and toggles **Start with Windows**.
 - **Live model and GPU info.** The chat bar shows GPU temperature, load, VRAM and writing speed. An **i** card shows the model's size, quantization, context and measured speed; the model menu shows each model's VRAM use with an **Unload** button.
@@ -73,12 +73,12 @@ Measured with the project's own scripts and the app's live model card on the dev
 ## Install
 
 1. Download the latest **Ninja-x.y.z.zip** from [Releases](https://github.com/Karthik6146/Ninja-Assistant/releases/latest) and unzip it anywhere, for example `Documents\Ninja`.
-2. Double-click **Install Ninja**. It installs Python 3.11 with winget if needed, sets up Ninja and adds a **Ninja** shortcut to the Desktop and Start menu.
-3. Ninja opens the **setup wizard**. Press **Install Ollama**, download the recommended model, optionally set up voice, then **Start using Jarvis**.
+2. Double-click **Install Ninja** and wait. It checks your PC and installs whatever is missing: Python 3.11, Ninja's packages, Ollama, the model that fits your PC, voice, and a **Ninja** shortcut on the Desktop and Start menu. The model and voice are a few GB, so the first install takes a while.
+3. Ninja opens, signed in and ready. Say "Hey Jarvis" or type.
 
-No terminal, no config files. You need Windows 10 or 11 with winget (built into current Windows). Run the wizard again any time from **Settings → AI model → Check PC and models**.
+No terminal, no config files, nothing else to install first. Works on Windows 10 or 11. Run **Install Ninja** again any time to repair or finish a setup; done steps are skipped. The **setup wizard** in **Settings → AI model → Check PC and models** can change the model later.
 
-| Your PC | Model the wizard picks | What to expect |
+| Your PC | Model the installer picks | What to expect |
 |---|---|---|
 | NVIDIA GPU, 8 GB or more | `qwen3.5:9b` (6.6 GB) | The best experience; what Ninja is tuned on |
 | NVIDIA GPU, 6 GB | `qwen3.5:4b` (3.3 GB) | Quick replies and good tool use |
@@ -169,7 +169,7 @@ With `scripts/start.ps1`, open **http://127.0.0.1:8000** and connect with the to
 | `backend/ninja/*_tools.py`, `gmail.py`, `whatsapp.py`, `desktop.py` | Tools |
 | `backend/ninja/setup_routes.py`, `frontend/src/SetupWizard.tsx` | System check, model ratings and installs |
 | `backend/ninja/assistant_routes.py`, `frontend/src/ModelPicker.tsx` | Model picker, model card, GPU and speed |
-| `scripts/ninja-app.ps1`, `install-app.ps1`, `install.ps1` | Tray app, shortcuts, one-click install |
+| `scripts/ninja-app.ps1`, `install-app.ps1`, `install.ps1` | Tray app, shortcuts, one-click install of Python, Ollama, model and voice |
 | `scripts/listener-resident.py`, `voice-resident.py`, `neural-voice-resident.py` | Resident listener, Whisper and Kokoro processes |
 | `frontend/src/AssistantConsole.tsx`, `VoiceControls.tsx` | Jarvis screen and voice mode |
 | `backend/ninja/youtube*.py`, `studio*.py` | Creator tools (YouTube, Studio) |
