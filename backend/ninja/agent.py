@@ -51,7 +51,7 @@ def create(body:Request):
 
 def get(id):
     with db.connect() as c:
-        task=load(c,id)
+        task=load(c,id);task['updated']=c.execute('SELECT updated FROM agent_tasks WHERE id=?',(id,)).fetchone()[0]
         job=c.execute('SELECT state,step,error,cancel FROM jobs WHERE id=?',(task['job'],)).fetchone()
         rows=c.execute('SELECT step,state,payload,result FROM agent_steps WHERE task=? ORDER BY rowid',(id,)).fetchall()
     task['conversation']=task.get('conversation') or legacy_conversation(task)
@@ -249,7 +249,8 @@ def execute(id,job,attempt):
             answer=answer.model_copy(update={'text':'','calls':[ToolCall(id='media',name='media.control',arguments={'action':key})]})
         if companion and answer.calls:
             said=[m['content'] for m in task.get('conversation',[]) if m.get('role')=='user'][-3:]+[latest]
-            answer=answer.model_copy(update={'calls':[grounded(call,said) for call in answer.calls]})
+            found=[m['content'] for m in task['messages'] if m.get('role')=='tool']
+            answer=answer.model_copy(update={'calls':[grounded(call,said,found) for call in answer.calls]})
         text=answer.text
         if not text.strip() and not answer.calls and not task['calls'] and task['turns']==1 and recovery(task['messages'][-1]):
             # Qwen often answers the recovery prompt with nothing; keep its first reply, flagged as unverified.
@@ -383,9 +384,16 @@ def media_command(text):
     if not text or len(text.split())>6 or re.search(r'\bplay\b.+\b(?:by|on spotify)\b',text):return None
     return next((key for key,pattern in MEDIA_COMMANDS if re.search(pattern,text)),None)
 
-def grounded(call,said):
+def grounded(call,said,found=()):
     """A media.play song the user never said ("Play music for me" became a search for "popular music") resumes the
-    player instead. Songs named in the last few user turns ("the music name is Mine", then "play it") still play."""
+    player instead. Songs named in the last few user turns ("the music name is Mine", then "play it") still play.
+    A research.fetch URL that neither the user nor an earlier tool result gave ("tell me about cyber security" fetched an
+    invented https://www.computer.com/cyber-security and failed with 404) becomes a search for the question instead."""
+    if call.name=='research.fetch':
+        from urllib.parse import urlsplit
+        url=str(call.arguments.get('url',''));host=(urlsplit(url).hostname or '').removeprefix('www.')
+        if url and any(url in text or (host and host in text.lower()) for text in [*said,*found]):return call
+        return call.model_copy(update={'name':'research.search','arguments':{'query':(said[-1] if said else url)[:200]}})
     if call.name!='media.play':return call
     generic={'music','song','songs','gaana','gana','play','the','for','some','any','video','videos','spotify','youtube','please','now'}
     heard={w for text in said for w in re.findall(r'\w{3,}',text.lower())}-generic
@@ -521,6 +529,15 @@ def forget_task(id):
         c.execute('DELETE FROM agent_steps WHERE task=?',(id,))
         c.execute('DELETE FROM agent_tasks WHERE id=?',(id,))
     return {'forgotten':id,'notice':'Conversation, derived saved facts and assistant job records removed. Requested files, linked workflow outputs, manual facts and backups remain separate.'}
+
+def forget_all():
+    """Delete every conversation; one still running (or with running linked work) is kept and counted."""
+    with db.connect() as c:ids=[r[0] for r in c.execute('SELECT id FROM agent_tasks')]
+    done=skipped=0
+    for id in ids:
+        try:forget_task(id);done+=1
+        except ValueError:skipped+=1
+    return {'forgotten':done,'skipped':skipped}
 
 def save_video_draft(id,revision):
     from . import studio

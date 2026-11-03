@@ -17,7 +17,16 @@ def models():
     """What the composer's model picker offers: installed Ollama models and the .env cloud model, if configured."""
     from . import adapters
     from urllib.parse import urlsplit
-    return {'provider':adapters.chat_provider(),'model':adapters.chat_model(),'local':adapters.provider_status()[0]['models'],
+    import httpx
+    # Per installed model: bytes on disk, and bytes in VRAM when Ollama has it loaded.
+    memory={}
+    try:
+        with httpx.Client(base_url=adapters.ollama_url(),timeout=3,trust_env=False) as client:
+            memory={m['name']:{'disk':m.get('size'),'vram':None} for m in client.get('/api/tags').raise_for_status().json().get('models',[])}
+            for m in client.get('/api/ps').raise_for_status().json().get('models',[]):
+                if m.get('name') in memory:memory[m['name']]['vram']=m.get('size_vram')
+    except (httpx.HTTPError,ValueError,KeyError):pass  # Ollama stopped; the menu shows names only.
+    return {'provider':adapters.chat_provider(),'model':adapters.chat_model(),'local':adapters.provider_status()[0]['models'],'memory':memory,
             'cloud':{'model':os.getenv('CLOUD_MODEL',''),'host':urlsplit(os.getenv('CLOUD_URL','')).hostname or '','ready':adapters.cloud_ready()}}
 
 @router.put('/models')
@@ -30,21 +39,99 @@ def choose_model(body:ModelChoice):
         if body.provider=='ollama':c.execute("INSERT OR REPLACE INTO preferences VALUES('ollama_model',?)",(body.model,))
     return models()
 
+def gpu():
+    """The first NVIDIA GPU's live name, load, VRAM and temperature, or None without an NVIDIA driver."""
+    import subprocess
+    try:
+        out=subprocess.run(['nvidia-smi','--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu','--format=csv,noheader,nounits'],
+                           capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0).stdout.splitlines()[0].split(', ')
+        return {'name':out[0],'load':int(out[1]),'memory_used':int(out[2])*2**20,'memory_total':int(out[3])*2**20,'temperature':int(out[4])}
+    except (OSError,subprocess.SubprocessError,IndexError,ValueError):return None
+
+def speed(model):
+    """Speeds over the model's last 20 replies, from Ollama's own token counts and durations; None before its first reply."""
+    import json
+    with db.connect() as c:
+        # Each model turn's result keeps Ollama's own token counts and durations.
+        steps=c.execute("""SELECT json_extract(s.result,'$.usage') AS usage,json_extract(s.result,'$.timing') AS timing FROM
+            (SELECT job,reported FROM chat_usage WHERE provider='ollama' AND model=? ORDER BY reported DESC LIMIT 20) u
+            JOIN jobs j ON j.id=u.job JOIN agent_steps s ON s.task=j.project AND s.step LIKE 'model:'||u.job||':%' AND s.state='completed'""",(model,)).fetchall()
+    turns=[(json.loads(r['usage'] or '{}'),json.loads(r['timing'] or '{}')) for r in steps]
+    def rate(tokens,seconds):
+        pairs=[(u.get(tokens),t.get(seconds)) for u,t in turns if type(u.get(tokens))==int and t.get(seconds)]
+        return round(sum(a for a,_ in pairs)/sum(b for _,b in pairs),1) if pairs else None
+    def mean(key):
+        values=[t[key] for _,t in turns if type(t.get(key)) in (int,float)]
+        return round(sum(values)/len(values),2) if values else None
+    if not turns:return None
+    return {'turns':len(turns),'output_per_second':rate('output_tokens','generation_seconds'),'prompt_per_second':rate('input_tokens','prompt_seconds'),
+            'first_text_seconds':mean('first_text_seconds'),'turn_seconds':mean('model_seconds'),'load_seconds':mean('load_seconds')}
+
+@router.get('/gpu')
+def gpu_status():
+    """Polled by the composer bar's chip; cheaper than the full model card. Speed only for a local chat model."""
+    from . import adapters
+    measured=speed(adapters.chat_model()) if adapters.chat_provider()=='ollama' else None
+    return {'gpu':gpu(),'tokens_per_second':measured and measured['output_per_second']}
+
+class Unload(Strict):
+    model:str=Field(max_length=200)
+
+@router.post('/models/unload')
+def unload_model(body:Unload):
+    """Free one model's VRAM now. Refused while a reply or media job holds the model lock; the next chat loads it again."""
+    import httpx
+    from filelock import FileLock,Timeout
+    from . import adapters
+    from .config import DATA
+    if body.model not in adapters.provider_status()[0]['models']:raise ValueError('Choose an installed Ollama model')
+    try:
+        with FileLock(DATA/'model.lock',timeout=0),httpx.Client(base_url=adapters.ollama_url(),timeout=30,trust_env=False) as client:
+            client.post('/api/generate',json={'model':body.model,'keep_alive':0}).raise_for_status()
+    except Timeout:raise ValueError('The model is busy with a reply or a media job; try again when it finishes') from None
+    except httpx.HTTPError:raise ValueError('Ollama could not unload the model; check that it is running') from None
+    return models()
+
+@router.get('/models/info')
+def model_info(model:str):
+    """The picker's info card: what Ollama reports about an installed model, whether it sits in VRAM, the GPU's live load and speeds measured over recent replies."""
+    import httpx
+    from . import adapters
+    if model not in adapters.provider_status()[0]['models']:raise ValueError('Choose an installed Ollama model')
+    info={'model':model,'details':{},'capabilities':[],'parameters':None,'context_max':None,'disk_bytes':None,'loaded':None,'gpu':None,'speed':None}
+    try:
+        with httpx.Client(base_url=adapters.ollama_url(),timeout=5,trust_env=False) as client:
+            shown=client.post('/api/show',json={'model':model}).raise_for_status().json()
+            info['details']={k:shown.get('details',{}).get(k) for k in ('family','parameter_size','quantization_level','format')}
+            info['capabilities']=shown.get('capabilities') or []
+            facts=shown.get('model_info') or {}
+            info['parameters']=facts.get('general.parameter_count')
+            info['context_max']=next((v for k,v in facts.items() if k.endswith('.context_length')),None)
+            info['disk_bytes']=next((m.get('size') for m in client.get('/api/tags').raise_for_status().json().get('models',[]) if m.get('name')==model),None)
+            running=next((m for m in client.get('/api/ps').raise_for_status().json().get('models',[]) if m.get('name')==model),None)
+            if running:info['loaded']={k:running.get(k) for k in ('size','size_vram','context_length')}
+    except (httpx.HTTPError,ValueError):pass  # Ollama stopped; the card shows what it can.
+    info['gpu']=gpu()
+    info['speed']=speed(model)
+    return info
+
 @router.get('/usage')
 def usage():
-    """Local Qwen tokens per day (last 30) and per month (last 12), local time; empty periods are zero."""
+    """Chat tokens per day (last 30) and per month (last 12), local time; empty periods are zero. Each reply is one row, dated when it finished."""
     import datetime
     today=datetime.date.today()
     days=[(today-datetime.timedelta(days=n)).isoformat() for n in range(29,-1,-1)]
     months=[f'{(today.year*12+today.month-1-n)//12}-{(today.month-1-n)%12+1:02d}' for n in range(11,-1,-1)]
     with db.connect() as c:
-        rows=c.execute("SELECT strftime('%Y-%m-%d',reported,'unixepoch','localtime') AS day,SUM(COALESCE(input_tokens,0)) AS input,SUM(COALESCE(output_tokens,0)) AS output FROM chat_usage WHERE day>=? GROUP BY day",(months[0]+'-01',)).fetchall()
+        rows=c.execute("SELECT strftime('%Y-%m-%d',reported,'unixepoch','localtime') AS day,SUM(COALESCE(input_tokens,0)) AS input,SUM(COALESCE(output_tokens,0)) AS output,COUNT(*) AS replies FROM chat_usage WHERE day>=? GROUP BY day",(months[0]+'-01',)).fetchall()
+        by_model=c.execute("SELECT provider,model,SUM(COALESCE(input_tokens,0)) AS input,SUM(COALESCE(output_tokens,0)) AS output,COUNT(*) AS replies FROM chat_usage WHERE strftime('%Y-%m-%d',reported,'unixepoch','localtime')>=? GROUP BY provider,model ORDER BY input+output DESC",(days[0],)).fetchall()
     def group(keys,width):
-        totals={k:{'period':k,'input':0,'output':0} for k in keys}
+        totals={k:{'period':k,'input':0,'output':0,'replies':0} for k in keys}
         for r in rows:
-            if r['day'][:width] in totals:totals[r['day'][:width]]['input']+=r['input'];totals[r['day'][:width]]['output']+=r['output']
+            if r['day'][:width] in totals:
+                for key in ('input','output','replies'):totals[r['day'][:width]][key]+=r[key]
         return list(totals.values())
-    return {'day':group(days,10),'month':group(months,7)}
+    return {'day':group(days,10),'month':group(months,7),'models':[dict(r) for r in by_model]}
 
 @router.get('/tasks')
 def listing():return agent.listing()
@@ -235,6 +322,9 @@ def private_question(body:PrivateQuestion):
     from . import adapters
     if body.messages[-1].role!='user':raise ValueError('End with your question')
     return JSONResponse(adapters.private_reply([m.model_dump() for m in body.messages]),headers={'Cache-Control':'no-store'})
+@router.post('/tasks/forget-all')
+def forget_all_conversations():return agent.forget_all()
+
 @router.post('/tasks/{id}/forget')
 def forget_conversation(id:str):return agent.forget_task(id)
 

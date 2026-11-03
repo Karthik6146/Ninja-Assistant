@@ -344,3 +344,36 @@ def test_definition_runs_no_tool_even_when_qwen_calls_one(monkeypatch):
     created=companion('what is meta data');run();value=agent.get(created['task'])
     assert offered[0]==set()
     assert value['reply']=='Metadata is data about data.' and value['failed_actions'] is False
+
+
+def test_forget_all_deletes_finished_conversations_and_keeps_running_ones(monkeypatch):
+    monkeypatch.setattr(adapters,'agent_turn',lambda *a,**kw:AgentTurn(text='Hi.'))
+    finished=companion('Hello there',key='forget-all-1');run()
+    running=companion('Still going',key='forget-all-2')
+    with db.connect() as c:c.execute("UPDATE jobs SET state='running' WHERE id=?",(running['job'],))
+    assert agent.forget_all()=={'forgotten':1,'skipped':1}
+    with db.connect() as c:left=[r[0] for r in c.execute('SELECT id FROM agent_tasks')]
+    assert left==[running['task']] and finished['task'] not in left
+
+def test_activity_job_list_names_jarvis_turns_after_the_conversation(monkeypatch):
+    from ninja import api
+    monkeypatch.setattr(adapters,'agent_turn',lambda *a,**kw:AgentTurn(text='Done, sir.'))
+    task=companion('Plan my Sunday',key='activity-title');run()
+    job=[j for j in api.jobs() if j['payload'].get('task')==task['task']][0]
+    assert job['title']=='Plan my Sunday'
+
+def test_activity_job_list_names_follow_ups_by_their_own_message(monkeypatch):
+    from ninja import api
+    monkeypatch.setattr(adapters,'agent_turn',lambda *a,**kw:AgentTurn(text='Done, sir.'))
+    task=companion('Plan my Sunday',key='activity-follow');run()
+    agent.revise(task['task'],Instruction(text='Add a walk at 6',request_key='activity-follow-2',expected_revision=0));run()
+    titles=[j['title'] for j in api.jobs() if j['payload'].get('task')==task['task']]
+    assert titles==['Add a walk at 6','Plan my Sunday']
+
+def test_fetch_of_an_invented_url_becomes_a_search():
+    from ninja.agent_models import ToolCall
+    fetch=lambda url:ToolCall(id='f',name='research.fetch',arguments={'url':url})
+    made_up=agent.grounded(fetch('https://www.computer.com/cyber-security'),['tell me something about cyber security'])
+    assert made_up.name=='research.search' and made_up.arguments=={'query':'tell me something about cyber security'}
+    assert agent.grounded(fetch('https://example.org/a'),['read https://example.org/a']).name=='research.fetch'
+    assert agent.grounded(fetch('https://docs.python.org/3/'),['what is new in python'],['{"url":"https://docs.python.org/3/whatsnew"}']).name=='research.fetch'

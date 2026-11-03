@@ -5,20 +5,54 @@
 .segmented button{min-height:30px;padding:4px 14px;border:0;background:transparent;color:var(--muted)}
 .segmented button[aria-pressed=true]{background:var(--accent-soft);color:var(--text)}
 .usageTotal{margin:0;color:var(--muted);font-size:13px}.usageTotal strong{color:var(--text);font-variant-numeric:tabular-nums}
-.usageChart{width:100%;height:180px;display:block}
-.usageAxis{stroke:var(--line);stroke-width:.4;vector-effect:non-scaling-stroke}
-.usageHit{fill:transparent}
-.usageBar{fill:var(--accent);opacity:.8}
-.usageChart g:hover .usageBar{opacity:1}
-.usageChart g:hover .usageHit{fill:var(--accent-soft)}
+.usageChat{display:grid;gap:6px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.usageChat>span,.usageStats dt,.usageModels h3{font-size:12px;color:var(--muted);margin:0;font-weight:500}
+.usageChat strong{font-size:20px;font-variant-numeric:tabular-nums}
+.usageChat small,.usageStats small,.usageModels small{font-size:12px;color:var(--faint);line-height:1.4}
+.meter{height:6px;border-radius:99px;background:var(--line);overflow:hidden}.meter i{display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width .3s var(--ease)}
+.meter.warn i{background:var(--gold)}
+.usageStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+.usageStats div{padding:10px 12px;border:1px solid var(--line);border-radius:10px;display:grid;gap:2px;min-width:0}
+.usageStats dd{margin:0;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.usageBars{position:relative;display:flex;align-items:flex-end;height:150px;padding-top:18px;border-bottom:1px solid var(--line);background:linear-gradient(var(--line) 1px,transparent 1px) 0 18px/100% 100% no-repeat}
+.usageMax{position:absolute;top:0;left:0;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.usageBars button{flex:1;height:100%;min-height:0;min-width:0;padding:0 1px;border:0;border-radius:3px 3px 0 0;background:transparent;display:flex;align-items:flex-end;justify-content:center}
+.usageBars button i{display:block;width:100%;max-width:14px;border-radius:3px 3px 0 0;background:var(--accent);opacity:.55;transition:opacity .15s}
+.usageBars button:hover,.usageBars button[aria-pressed=true]{background:var(--accent-soft)}
+.usageBars button[aria-pressed=true] i,.usageBars button:hover i{opacity:1}
+.usageDetail{margin:0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:2.6em}.usageDetail strong{color:var(--text)}
+.usageModels ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:12px}
+.usageModels li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px}
+.usageModels li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.usageModels em{font-style:normal;font-size:11px;margin-left:6px;padding:1px 6px;border-radius:99px;background:var(--gold-soft);color:var(--gold-ink)}
+.usageModels b{font-size:13px;font-variant-numeric:tabular-nums}
+.usageModels .meter,.usageModels small{grid-column:1/-1}
+.usageNote{margin:0;font-size:12px;line-height:1.5;color:var(--faint)}.usageNote b{color:var(--muted);font-weight:600}
+.historyList .historyDay{padding:14px 12px 4px}.historyList .historyDay:first-child{padding-top:0}
+.historyDay h3{margin:0;font-size:12px;font-weight:600;color:var(--faint)}
 .usageLabels{display:flex;font-size:11px;color:var(--faint);margin-top:-6px}.usageLabels span{flex:1;text-align:center;white-space:nowrap;overflow:visible}
-.usageTable{width:100%;font-size:13px;font-variant-numeric:tabular-nums}.usageTable td,.usageTable th{text-align:right;padding:4px 6px}.usageTable :is(td,th):first-child{text-align:left}
+.usageTableBox{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.usageTableBox>summary{display:flex;align-items:center;gap:8px;padding:10px 12px;list-style:none;cursor:pointer;font-size:13px;color:var(--text)}
+.usageTableBox>summary::-webkit-details-marker{display:none}
+.usageTableBox>summary .icon{color:var(--faint);transition:transform .2s var(--ease)}.usageTableBox[open]>summary .icon{transform:rotate(90deg)}
+.usageTableBox>summary small{margin-left:auto;font-size:12px;color:var(--faint)}
+.usageTableBox>summary:hover{background:var(--surface)}
+.usageTableBox>.usageNote{display:block;padding:8px 12px 10px}
+.usageTable{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.usageTable :is(td,th){text-align:right;padding:7px 12px;white-space:nowrap}
+.usageTable :is(td,th):first-child{text-align:left}
+.usageTable thead th{font-size:12px;font-weight:600;color:var(--faint);background:var(--surface);border-block:1px solid var(--line)}
+.usageTable tbody tr{background:linear-gradient(90deg,var(--accent-soft) var(--share),transparent var(--share));border-bottom:1px solid var(--line)}
+.usageTable tbody tr:hover{background-color:var(--surface)}
+.usageTable tbody th{font-weight:500;color:var(--text)}
+.usageTable td{color:var(--muted)}.usageTable td b{color:var(--text);font-weight:600}
+.usageTable tfoot :is(td,th){font-weight:600;color:var(--text);border-top:1px solid var(--line-strong)}
 .jarvisBar{display:flex;align-items:center;gap:10px;max-width:780px;margin:0 auto 8px}
 .jarvisTitle{flex:1;margin:0;font-size:14px;font-weight:600;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .jarvisColumn{max-width:780px;margin:0 auto;display:flex;flex-direction:column;min-height:calc(100vh - 170px)}
 .jarvis .companionTranscript{flex:1 1 auto;height:calc(100vh - 330px);min-height:220px}
 .jarvisEmpty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6vh 0 4vh}
-.emptyMark{color:var(--accent);display:grid;place-items:center;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle,#3ccff229,transparent 68%)}
+.emptyMark{color:var(--brand);display:grid;place-items:center;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle,#3ccff229,transparent 68%)}
 .jarvisEmpty h2{font-size:30px;margin:16px 0 6px;letter-spacing:-.6px;font-weight:650}
 .jarvisEmpty p{margin:0 0 22px;font-size:14px;max-width:440px}
 .suggestions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:640px}
@@ -27,8 +61,8 @@
 .jarvis .companionTurn.user .bubble{background:#3ccff21a;color:var(--text)}
 .jarvis .companionTurn.assistant .bubble{background:var(--surface);border:1px solid var(--line)}
 .jarvis .companionTurn.provisional .bubble{background:transparent;border-style:dashed}
-.jarvis .turnAvatar{background:transparent;color:var(--accent);box-shadow:none;border:1px solid var(--accent-line)}
-.jarvis .caret{background:var(--accent)}
+.jarvis .turnAvatar{background:transparent;color:var(--brand);box-shadow:none;border:1px solid var(--brand-line)}
+.jarvis .caret{background:var(--brand)}
 .jarvis .typing i{background:var(--accent)}
 .reminder{display:flex;align-items:center;gap:10px;max-width:780px;margin:0 auto 10px;padding:6px 6px 6px 14px;border-radius:12px;background:var(--gold-soft);color:#f3d79a;border:1px solid #e5b45240;font-size:13px}
 .reminder span{flex:1}
@@ -61,7 +95,7 @@
 .jarvis .composer:focus-within{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
 .micButton{flex:none;width:40px;height:40px;min-height:40px;padding:0;border-radius:50%;background:var(--surface-2);border-color:var(--line-strong);color:var(--accent)}
 .micButton:hover{background:var(--accent-soft)}
-.micButton.on{background:var(--accent-soft);border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+.micButton.on{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
 .voiceInlineError{position:absolute;bottom:100%;left:0;right:0;margin:0 0 8px;color:var(--danger);font-size:12px}
 .historyActions{display:flex;gap:8px;margin-bottom:16px}
 .historyList{list-style:none;padding:0;margin:0 0 18px;display:grid;gap:2px}
@@ -74,7 +108,7 @@
 .voiceMode{position:fixed;inset:0;z-index:50;background:radial-gradient(ellipse at 50% 40%,#0f2331 0%,#081118 55%,#05090e 100%);display:flex;flex-direction:column;align-items:center;padding:18px 24px 30px;animation:voiceIn .35s var(--ease)}
 .voiceTop{display:flex;justify-content:space-between;width:100%}
 .voiceStage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;width:100%;max-width:660px;text-align:center}
-.voiceState{font-size:15px;color:var(--accent-strong);margin:0;min-height:22px;font-weight:500}
+.voiceState{font-size:15px;color:var(--brand);margin:0;min-height:22px;font-weight:500}
 .captions{min-height:84px}
 .captions .heard{color:var(--muted);font-size:15px;margin:0 0 8px}
 .captions .saying{color:var(--text);font-size:21px;line-height:1.45;margin:0}
@@ -86,7 +120,7 @@
 .voiceSettings{position:absolute;top:62px;left:24px;width:min(380px,calc(100vw - 48px));background:var(--rail);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 20px 50px #000c;animation:voiceIn .2s var(--ease)}
 .voiceSettings small{display:block;line-height:1.6}
 .voiceMode.mini{inset:auto 24px 24px auto;background:none;padding:0;animation:none}
-.miniOrb{display:flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:999px;background:var(--rail);border:1px solid var(--accent-line);box-shadow:0 10px 30px #000a;color:var(--text);min-height:54px}
+.miniOrb{display:flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:999px;background:var(--rail);border:1px solid var(--brand-line);box-shadow:0 10px 30px #000a;color:var(--text);min-height:54px}
 .orb{--level:0;--size:min(260px,52vw);position:relative;width:var(--size);height:var(--size);border-radius:50%;display:grid;place-items:center;flex:none}
 .orb i{position:absolute;border-radius:50%}
 .orb i:first-child{inset:0;background:repeating-conic-gradient(#3ccff2b3 0 21deg,transparent 21deg 30deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));animation:spin 28s linear infinite}
@@ -124,7 +158,7 @@
 .modelDot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--ok)}.modelDot.cloud{background:var(--gold)}
 .modelMenu{position:absolute;right:0;bottom:calc(100% + 10px);z-index:20;width:260px;padding:6px;border:1px solid var(--line-strong);border-radius:14px;background:var(--surface);box-shadow:0 16px 40px #000a;animation:menuIn .16s var(--ease)}
 @keyframes menuIn{from{opacity:0;transform:translateY(4px)}}
-.modelMenu p{margin:6px 10px 4px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.modelMenu p{margin:6px 10px 4px;font-size:12px;color:var(--faint)}
 .modelMenu button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border:0;border-radius:9px;background:transparent;text-align:left;min-height:0}
 .modelMenu button:hover{background:var(--surface-2)}
 .modelMenu button[aria-checked=true]{background:var(--accent-soft)}
@@ -147,7 +181,7 @@
 .jarvis .companionTurn.user .bubble{background:var(--surface-2);border:1px solid var(--line);border-radius:18px;border-bottom-right-radius:6px;padding:9px 15px;max-width:min(75%,560px)}
 .jarvis .companionTurn.user .bubble p{color:var(--text)}
 .jarvis .turnAvatar{width:28px;height:28px;border-color:transparent}
-.jarvis .companionTurn.first .turnAvatar{border-color:var(--accent-line);background:var(--accent-soft)}
+.jarvis .companionTurn.first .turnAvatar{border-color:var(--brand-line);background:var(--brand-soft)}
 .turnNote{display:flex;align-items:center;justify-content:center;gap:6px;margin:10px 0;font-size:12px;color:var(--faint)}
 .turnNotice{display:inline-flex;align-items:center;gap:5px;margin:0 0 6px;padding:2px 8px;border-radius:999px;font-size:11.5px;color:var(--gold);background:var(--gold-soft)}
 .jarvis .companionTranscript .toolCard{margin:6px 0 10px 38px;background:transparent}
@@ -191,3 +225,344 @@
 .markdownTable tbody tr:hover{background:var(--accent-soft)}
 .markdownTable :is(th,td)[style*="right"]{text-align:right}
 .markdownTable :is(th,td)[style*="center"]{text-align:center}
+
+/* History: a delete button per conversation, shown on hover or keyboard focus (always on touch screens). */
+.historyList li{position:relative;display:flex;align-items:stretch;gap:2px}
+.historyList li>button:first-child{flex:1 1 auto;width:auto;min-width:0}
+.historyList li>button:first-child>*{max-width:100%}
+.drawerBody{overflow-x:hidden}
+.historyList .historyDelete{flex:none;align-self:center;flex-direction:row;justify-content:center;align-items:center;gap:0;width:30px;height:30px;min-height:30px;padding:0;border-radius:8px;background:transparent;border-color:transparent;color:var(--faint);opacity:0;transition:opacity .15s,color .15s,background-color .15s}
+.historyList li:hover .historyDelete,.historyList .historyDelete:focus-visible{opacity:1}
+.historyList .historyDelete:hover{color:var(--danger);background:var(--danger-soft)}
+@media(hover:none){.historyList .historyDelete{opacity:1}}
+.deleteAll{display:flex;align-items:center;gap:8px;margin-top:18px}
+
+/* Chat and drawers scroll without a visible scrollbar (wheel, touch and keyboard still work; "Latest" jumps down). */
+.jarvis .companionTranscript,.drawerBody{scrollbar-width:none;scrollbar-gutter:auto}
+.jarvis .companionTranscript{padding-right:0}
+.jarvis .companionTranscript::-webkit-scrollbar,.drawerBody::-webkit-scrollbar{display:none}
+
+/* Today drawer: a single-column checklist; open tasks first, finished ones below. */
+.todayPanel{display:grid;gap:16px}
+.todayIntro h2{margin:2px 0 6px;font-size:22px;line-height:1.25;letter-spacing:-.02em}
+.todayIntro p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.todayIntro .todayDate{margin-bottom:6px;color:var(--muted);font-size:13px;font-weight:500}
+.todayAdd{display:flex;gap:8px}
+.todayAdd :is(input,button){height:44px;min-height:44px;margin:0;box-sizing:border-box}
+.todayAdd input{flex:1;min-width:0}
+.todayAdd button{flex:none;width:44px;padding:0;justify-content:center;border-radius:10px}
+.todayProgress{display:grid;gap:6px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.todayList{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.todayList li{display:flex;align-items:center;gap:4px;border-radius:10px;padding:2px 4px 2px 0}
+.todayList li:hover{background:var(--surface)}
+.todayList label{flex:1;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:10px;margin:0;padding:9px 10px;cursor:pointer;font-size:14px;color:var(--text);line-height:1.45}
+.todayList label span{overflow-wrap:anywhere}
+.todayList input[type=checkbox]{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:var(--accent);cursor:pointer}
+.todayList li.done span{text-decoration:line-through;color:var(--faint)}
+.todayList .todayRemove{flex:none;width:30px;height:30px;min-height:30px;border-radius:8px;opacity:0;transition:opacity .15s,color .15s,background-color .15s}
+.todayList li:hover .todayRemove,.todayList .todayRemove:focus-visible{opacity:1}
+.todayList .todayRemove:hover{color:var(--danger);background:var(--danger-soft)}
+@media(hover:none){.todayList .todayRemove{opacity:1}}
+.todayEmpty{margin:0;padding:18px;border:1px dashed var(--line-strong);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.5;text-align:center}
+.todayUpcoming{border-top:1px solid var(--line);padding-top:12px}
+.todayUpcoming summary{font-size:13px;color:var(--muted);cursor:pointer}
+.todayUpcoming ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.todayUpcoming li{display:flex;justify-content:space-between;gap:12px;font-size:13px}.todayUpcoming li small{color:var(--faint);white-space:nowrap}
+.todayMeta{font-size:11px;color:var(--faint)}
+
+/* Settings opens the model menu below its button (the chat composer opens it above). */
+.modelMenu.down{bottom:auto;top:calc(100% + 8px)}
+.setRow .modelPicker{flex:none}
+.setRow .modelButton{border:1px solid var(--line-strong)}
+
+/* Activity: a slim stats row, then the task list beside the chosen task's details. */
+.activityBoard{display:grid;gap:16px;margin-bottom:20px}
+.activityStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.activityStats>div{padding:12px 16px;border-left:1px solid var(--line);display:grid;gap:2px}
+.activityStats>div:first-child{border-left:0}
+.activityStats dt{font-size:12px;color:var(--muted)}
+.activityStats dd{margin:0;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.activityStats dd small{font-size:12px;font-weight:400;color:var(--faint)}
+.activityStats .bad dd{color:var(--danger)}
+.activitySplit{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:16px;align-items:start}
+.activityList{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);height:calc(100vh - 230px);min-height:420px;overflow:hidden}
+.activityTools{display:grid;gap:10px;padding:12px;border-bottom:1px solid var(--line)}
+.activityTools input{margin:0;min-height:38px}
+.activityFilters{display:flex;flex-wrap:wrap;gap:6px}
+.activityFilters button{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 10px;border-radius:999px;font-size:12px;background:transparent;border:1px solid var(--line);color:var(--muted)}
+.activityFilters button small{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.activityFilters button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.activityList>ul{flex:1;list-style:none;margin:0;padding:6px 8px 10px;overflow:auto;scrollbar-width:thin}
+.activityList>ul>li{display:block}
+.activityList h4{margin:12px 8px 4px;font-size:12px;font-weight:600;color:var(--faint)}
+.activityList>ul>li>button{display:flex;flex-direction:row;justify-content:flex-start;align-items:flex-start;gap:10px;width:100%;min-height:0;text-align:left;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:10px;color:var(--text)}
+.activityList>ul>li>button:hover{background:var(--panel)}
+.activityList>ul>li>button[aria-current=true]{background:var(--accent-soft);border-color:var(--accent-line)}
+.activityList>ul>li>button>span{display:grid;gap:2px;min-width:0;flex:1}
+.activityList>ul>li strong{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activityList>ul>li small{font-size:12px;color:var(--muted)}
+.activityList>.profileHint{margin:12px}
+.activityDot{flex:none;width:8px;height:8px;margin-top:6px;border-radius:50%;background:var(--faint)}
+.activityDot.completed{background:var(--ok)}.activityDot.failed{background:var(--danger)}.activityDot.running,.activityDot.queued{background:var(--accent)}.activityDot.waiting_for_approval{background:var(--gold)}
+.activitySplit>.taskPanel{position:sticky;top:16px;width:auto;max-height:calc(100vh - 230px);min-height:420px;overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:none;padding:20px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
+.taskPanel .profileHint{margin:0}
+.taskHead{display:grid;gap:6px}.taskHead .state{justify-self:start}
+.taskHead h3{margin:0;font-size:17px;line-height:1.35;overflow-wrap:anywhere}
+.taskHead small{color:var(--muted);font-size:12px}
+.taskPanel .inline:empty{display:none}
+.taskFacts{display:grid;margin:0;border:1px solid var(--line);border-radius:12px}
+.taskFacts div{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px}
+.taskFacts div:first-child{border-top:0}
+.taskFacts dt{color:var(--muted)}.taskFacts dd{margin:0;overflow-wrap:anywhere}
+.taskReply{white-space:pre-wrap;line-height:1.5}
+.outputsCard h2{display:flex;align-items:baseline;gap:8px}.outputsCard h2 small{font-size:13px;color:var(--muted);font-weight:400}
+.outputsCard ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.outputsCard li{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:10px}
+.outputsCard li strong{flex:1;min-width:0;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:900px){.activitySplit{grid-template-columns:1fr}.activityList,.activitySplit>.taskPanel{height:auto;max-height:none;min-height:0;position:static}.activityList>ul{max-height:420px}.activityStats{grid-template-columns:repeat(2,minmax(0,1fr))}.activityStats>div:nth-child(3){border-left:0}}
+
+/* YouTube page: modelled on YouTube Studio. Flat panels, underline tabs, a dense uploads table. */
+.ytPage{display:grid;gap:18px}
+.ytHeader{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ytChannels{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:20px;flex:1;min-width:0}
+.ytChannels li{display:flex;align-items:center;gap:10px;min-width:0}
+.ytChannels img,.ytAvatar{width:36px;height:36px;border-radius:50%;flex:none}
+.ytAvatar{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:700}
+.ytChannels div{display:grid;gap:1px;min-width:0}
+.ytChannels strong{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ytChannels small{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.ytEmpty{flex:1;margin:0;color:var(--muted)}
+.ytTabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.ytTabs button{flex:none;min-height:44px;padding:0 16px;margin-bottom:-1px;background:transparent;border:0;border-bottom:3px solid transparent;border-radius:0;color:var(--muted);font-weight:500}
+.ytTabs button:hover{color:var(--text)}
+.ytTabs button[aria-current=page]{color:var(--text);border-bottom-color:var(--accent)}
+.ytPanel{display:grid;gap:12px;align-content:start;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.ytPanel h3{margin:0;font-size:16px}
+.ytPanel>p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.ytPanel label{margin:0}.ytPanel label>span{color:var(--faint);font-size:12px;font-weight:400}
+.ytPanel>.primary,.ytPanel>button{justify-self:start}
+.ytPanelHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ytPanelHead p{margin:0;color:var(--muted);font-size:13px}
+.ytPanelTitle{margin-bottom:12px}.ytPanelTitle h2{margin:0 0 4px;font-size:18px}.ytPanelTitle p{margin:0;color:var(--muted);font-size:13px}
+.ytNote{color:var(--faint);font-size:12px;line-height:1.5}
+.ytGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:16px;align-items:start}
+.ytFields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:12px}
+.ytTable{width:100%;border-collapse:collapse;font-size:13px}
+.ytTable th{text-align:left;font-size:12px;font-weight:500;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line)}
+.ytTable td{padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
+.ytTable tbody tr:hover>td{background:var(--panel)}
+.ytTable tr.open>td{background:var(--panel);border-bottom-color:transparent}
+.ytTable td:first-child{display:grid;gap:3px}
+.ytTable td:first-child a{font-size:12px}
+.ytTable td:last-child{text-align:right;width:1%;white-space:nowrap}
+.ytTable td:last-child button{min-height:30px;padding:2px 12px;font-size:12px}
+.ytDetail>td{background:var(--panel);padding:0 12px 16px!important}
+.ytState{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+.ytState::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.ytState.public::before,.ytState.applied::before,.ytState.completed::before{background:var(--ok)}
+.ytState.review::before,.ytState.scheduled::before{background:var(--gold)}
+.ytState.failed::before,.ytState.conflict::before,.ytState.uncertain::before,.ytState.reconciliation_required::before{background:var(--danger)}
+.ytState.uploading::before,.ytState.processing::before,.ytState.running::before,.ytState.queued::before{background:var(--accent)}
+.ytOperation{display:grid;gap:10px;padding-top:4px}
+.ytOperation .ytMeta{margin:0;font-size:12px;color:var(--muted)}
+.ytOperation .primary,.ytOperation>button{justify-self:start}
+.ytOperation details>summary{cursor:pointer;font-size:12px;color:var(--muted)}
+.ytSteps{list-style:none;counter-reset:step;margin:0;padding:0;display:grid;gap:14px}
+.ytSteps li{counter-increment:step;display:grid;grid-template-columns:28px 1fr;gap:4px 12px}
+.ytSteps li::before{content:counter(step);grid-row:span 3;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;border:1px solid var(--line-strong);font-size:12px;color:var(--muted)}
+.ytSteps li.done::before{content:"✓";border-color:var(--ok);color:var(--ok)}
+.ytSteps li>span{font-size:13px;color:var(--muted);line-height:1.5}
+.ytSteps label.button{position:relative;overflow:hidden;justify-self:start;cursor:pointer}
+.ytSteps input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+.ytChecks{display:flex;flex-wrap:wrap;gap:6px 18px}
+.ytChecks label{display:flex;flex-direction:row;align-items:center;gap:8px;font-size:13px}
+.ytChecks input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.ytPage .card{border-radius:10px;background:var(--surface);box-shadow:none}
+@media(max-width:700px){.ytTable thead{display:none}.ytTable tr{display:grid;grid-template-columns:1fr auto}.ytTable td{border:0;padding:6px 10px}.ytTable td:first-child{grid-column:1/-1}.ytTable tbody tr{border-bottom:1px solid var(--line)}}
+
+/* No decorative glyphs on counters and empty states. */
+.cmsStatMark,.cmsEmpty>span[aria-hidden]{display:none}
+
+/* Motion: short, eased, and only on things that just appeared or changed. Off for reduced-motion users. */
+:where(a,button,.button,input,select,textarea,summary,.setRow,.profileCard,.cmsContentCard,.ytTable td,.outputsCard li,.setFacts li,.setPermissions li){transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,opacity .18s ease,transform .14s var(--ease)}
+@keyframes riseIn{from{opacity:0;transform:translateY(6px)}}
+@keyframes fadeIn{from{opacity:0}}
+@keyframes growUp{from{transform:scaleY(0)}}
+/* A page or tab fades up when it mounts. */
+main>*,.ytPanel,.cmsPane,.cmsComposer,.setCard,.taskFacts,.timeline,.profileCard,.activityBoard,.todayPanel,.tokenUsage,.jarvisEmpty{animation:riseIn .32s var(--ease) both}
+.setCard:nth-of-type(2),.ytGrid>:nth-child(2),.profileCard:nth-child(2){animation-delay:40ms}
+.setCard:nth-of-type(3),.profileCard:nth-child(3){animation-delay:80ms}
+.setCard:nth-of-type(n+4),.profileCard:nth-child(n+4){animation-delay:120ms}
+/* Lists ease in row by row (first few only, so long lists are not slow). */
+.activityList>ul>li,.historyList>li,.todayList>li,.setFacts>li,.ytTable tbody>tr,.outputsCard li{animation:riseIn .28s var(--ease) both}
+.activityList>ul>li:nth-child(2),.historyList>li:nth-child(2),.todayList>li:nth-child(2),.ytTable tbody>tr:nth-child(2){animation-delay:25ms}
+.activityList>ul>li:nth-child(3),.historyList>li:nth-child(3),.todayList>li:nth-child(3),.ytTable tbody>tr:nth-child(3){animation-delay:50ms}
+.activityList>ul>li:nth-child(4),.historyList>li:nth-child(4),.todayList>li:nth-child(4),.ytTable tbody>tr:nth-child(4){animation-delay:75ms}
+.activityList>ul>li:nth-child(n+5),.historyList>li:nth-child(n+5),.todayList>li:nth-child(n+5),.ytTable tbody>tr:nth-child(n+5){animation-delay:100ms}
+/* Opened details slide their content down; status and notices fade in. */
+details[open]>:not(summary){animation:riseIn .24s var(--ease) both}
+[role=status],[role=alert],.cmsNotice,.confirmCard,.taskReply{animation:fadeIn .25s ease both}
+/* Charts and meters grow into place. */
+.usageBars button i{transform-origin:bottom;animation:growUp .5s var(--ease) both}
+.meter i{transition:width .5s var(--ease)}
+/* Presses feel physical; cards lift a touch on hover. */
+button:active:not(:disabled),.button:active{transform:scale(.97)}
+.profileCard:hover,.studioModes button:hover{transform:translateY(-1px)}
+.ytTabs button{transition:color .18s ease,border-color .25s var(--ease)}
+.toolCard>summary .icon:last-child,.usageTableBox>summary .icon{transition:transform .25s var(--ease)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after,.drawer,.drawer::backdrop{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+
+/* Composer: one quiet box. The textarea has no ring of its own; the box border brightens on focus. */
+.jarvis .composer{border-color:var(--line-strong);border-radius:16px;padding:12px 10px 10px 16px;box-shadow:none}
+.jarvis .composer:focus-within{border-color:#52525b;box-shadow:none}
+.jarvis .composer textarea,.jarvis .composer textarea:focus{border:0;background:transparent;box-shadow:none;outline:none;padding:4px 4px 6px 0;font-size:15px}
+.jarvis .composer textarea::placeholder{color:var(--faint)}
+.composerBar{gap:6px}
+.composerBar .modelButton{padding-left:8px;color:var(--muted)}
+.micButton,.jarvis .sendButton{width:36px;height:36px;min-height:36px;border-radius:10px}
+.micButton{background:transparent;border-color:transparent;color:var(--muted)}
+.micButton:hover{background:var(--surface-2);color:var(--text)}
+.micButton.on{background:var(--brand-soft);border-color:transparent;color:var(--brand);box-shadow:none}
+.jarvis .sendButton:disabled{background:transparent;border-color:transparent;color:var(--faint)}
+/* Floating voice widget: a small neutral pill; cyan only in the orb itself. */
+.miniOrb{gap:10px;padding:4px 14px 4px 4px;min-height:44px;background:var(--surface);border:1px solid var(--line-strong);box-shadow:0 8px 24px #0008;font-size:13px;font-weight:500}
+.miniOrb:hover{background:var(--surface-2);border-color:#52525b}
+.miniOrb .orb.small{--size:34px}
+
+/* Floating voice pill: a four-bar waveform that follows the mic or speaker level, then a short label. */
+.miniOrb{display:inline-flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;height:36px;min-height:36px;padding:0 14px 0 12px;border-radius:999px;background:#18181bf2;backdrop-filter:blur(8px);border:1px solid var(--line-strong);box-shadow:0 6px 20px #0007;font-size:13px;font-weight:500;line-height:1;color:var(--text)}
+.miniOrb:hover{background:var(--surface-2);border-color:#52525b}
+.voiceBars{--level:0;display:flex;align-items:center;gap:2px;height:16px}
+.voiceBars i{display:block;width:3px;height:calc(4px + var(--level)*12px);max-height:16px;border-radius:2px;background:var(--brand);transition:height .08s linear}
+.voiceBars i:nth-child(2){height:calc(6px + var(--level)*10px)}
+.voiceBars i:nth-child(3){height:calc(5px + var(--level)*11px)}
+.voiceBars i:nth-child(4){height:calc(3px + var(--level)*8px)}
+.miniOrb.thinking .voiceBars i{height:6px;animation:barWave .9s ease-in-out infinite}
+.miniOrb.thinking .voiceBars i:nth-child(2){animation-delay:.12s}.miniOrb.thinking .voiceBars i:nth-child(3){animation-delay:.24s}.miniOrb.thinking .voiceBars i:nth-child(4){animation-delay:.36s}
+.miniOrb:is(.standby,.idle) .voiceBars i{background:var(--faint);height:4px}
+.miniOrb.muted .voiceBars i{background:var(--danger);height:3px;opacity:.7}
+.miniOrb.muted span{color:var(--muted)}
+@keyframes barWave{0%,100%{height:4px}50%{height:12px}}
+
+/* Side-panel task chooser (replaces the native select). */
+.taskPicker{position:relative}
+.taskPickerButton{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;width:100%;min-height:52px;padding:8px 12px;text-align:left;background:var(--surface);border:1px solid var(--line-strong);border-radius:10px}
+.taskPickerButton:hover{border-color:#52525b}
+.taskPickerButton>span,.taskPickerMenu li span{display:grid;gap:2px;min-width:0;flex:1}
+.taskPickerButton strong,.taskPickerMenu li strong{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.taskPickerButton small,.taskPickerMenu li small{font-size:12px;color:var(--muted);font-weight:400}
+.taskPickerButton .activityDot{margin-top:0}
+.taskPickerButton>.icon{color:var(--faint);transform:rotate(90deg);transition:transform .2s var(--ease)}
+.taskPickerButton[aria-expanded=true]>.icon{transform:rotate(-90deg)}
+.taskPickerMenu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:30;display:flex;flex-direction:column;max-height:min(460px,65vh);background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 16px 40px #000b;animation:menuIn .16s var(--ease);overflow:hidden}
+.taskPickerMenu input{margin:8px;min-height:34px}
+.taskPickerMenu ul{list-style:none;margin:0;padding:0 6px 6px;overflow:auto;scrollbar-width:thin}
+.taskPickerMenu h4{margin:10px 8px 4px;font-size:12px;font-weight:600;color:var(--faint)}
+.taskPickerMenu li button{display:flex;flex-direction:row;align-items:flex-start;justify-content:flex-start;gap:10px;width:100%;min-height:0;padding:8px;text-align:left;background:transparent;border:1px solid transparent;border-radius:8px}
+.taskPickerMenu li button:hover{background:var(--surface-2)}
+.taskPickerMenu li button[aria-selected=true]{background:var(--surface-3)}
+.taskPickerMenu li button>.icon{color:var(--text);margin-top:2px}
+.taskPickerMenu .profileHint{margin:8px}
+.activityDot.live{animation:dotPulse 1s ease-in-out infinite alternate}
+
+/* Side task panel: even spacing between the picker, status, title and tabs. */
+.taskPanel{display:flex;flex-direction:column;gap:12px}
+.taskPanel>h2{margin:0}
+.taskPanel>*{margin-top:0;margin-bottom:0}
+.taskPanel .segmented{align-self:flex-start}
+
+/* Model details: the "i" beside the picker opens a live card of model facts, GPU load and measured speed. */
+.modelPicker{display:flex;align-items:center;gap:2px}
+.modelInfoButton{display:grid;place-items:center;width:30px;height:30px;min-height:0;padding:0;border:1px solid transparent;border-radius:50%;background:transparent;color:var(--faint)}
+.modelInfoButton:hover,.modelInfoButton[aria-expanded=true]{color:var(--text);background:var(--surface-2);border-color:var(--line-strong)}
+.modelInfo{display:grid;gap:12px}
+.modelInfoPop{width:300px;padding:12px;max-height:min(70vh,560px);overflow:auto;scrollbar-width:thin}
+/* Settings shows the card inline, so the popover button is not needed there. */
+.setRow .modelInfoButton{display:none}
+.setCard>.modelInfo{padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)}
+.setCard>.modelInfo{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 24px}
+.setCard>.modelInfo>.infoHead{grid-column:1/-1}
+.setCard>.modelInfo section{border-top-color:var(--line-strong)}
+.infoHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.infoHead strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.infoLoaded{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.infoLoaded::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.infoLoaded.on::before{background:var(--ok)}
+.modelInfo section{display:grid;gap:6px;padding-top:10px;border-top:1px solid var(--line)}
+.modelInfo section p{margin:0;font-size:12px;color:var(--faint)}
+.modelInfo dl{display:grid;gap:5px;margin:0}
+.modelInfo dl div{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px;font-size:12px}
+.modelInfo dt{color:var(--muted)}
+.modelInfo dd{margin:0;display:flex;align-items:center;gap:8px;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.infoBar{flex:1;max-width:80px;height:4px;border-radius:2px;background:var(--surface-3);overflow:hidden}
+.infoBar i{display:block;height:100%;background:var(--text);border-radius:2px;transition:width .4s var(--ease)}
+.infoTags{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.infoTags span{padding:1px 8px;border:1px solid var(--line-strong);border-radius:999px;font-size:11px;color:var(--muted)}
+/* Unload: frees a loaded model's VRAM, from the dropdown row or the info card. */
+.modelRow{display:flex;align-items:center;gap:4px}
+.modelMenu .modelRow>button[role=menuitemradio]{flex:1;min-width:0}
+.modelMenu .modelUnload,.infoUnload{flex:none;width:auto;min-height:26px;padding:2px 10px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;font-size:11px;color:var(--muted)}
+.modelMenu .modelUnload:hover,.infoUnload:hover:not(:disabled){color:var(--text);background:var(--surface-2)}
+.infoHead .infoLoaded{margin-left:auto}
+.infoError{font-size:12px;color:var(--danger)}
+/* GPU temperature chip beside the model picker; gold from 70 °C, red from 80 °C. */
+.composerBar .modelPicker:has(+.gpuTemp){margin-right:0}
+.gpuTemp{margin-right:auto;display:inline-flex;align-items:center;gap:6px;padding:0 6px;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.gpuTemp::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.gpuTemp.warm{color:var(--gold)}.gpuTemp.warm::before{background:var(--gold)}
+.gpuTemp.hot{color:var(--danger)}.gpuTemp.hot::before{background:var(--danger)}
+/* Load stays grey even when the temperature turns gold or red; min-width stops the chip jumping between 5% and 100%. */
+.gpuLoad{padding-left:8px;margin-left:2px;border-left:1px solid var(--line-strong);color:var(--faint);min-width:4ch;text-align:right}
+.gpuVram{min-width:0}
+.gpuRate{min-width:0}
+/* Unload sits inside the model's row: the row carries the hover and selected background, names stay on one line. */
+.modelMenu{width:290px}
+.modelMenu strong{white-space:nowrap}
+.modelRow{gap:0;border-radius:9px}
+.modelRow:hover{background:var(--surface-2)}
+.modelRow:has(>button[aria-checked=true]){background:var(--accent-soft)}
+.modelMenu .modelRow>button[role=menuitemradio],.modelMenu .modelRow>button[role=menuitemradio]:hover{background:transparent;padding-right:6px}
+.modelMenu .modelUnload{margin-right:6px;min-height:24px;padding:0 9px;border-color:var(--line);color:var(--faint)}
+.modelMenu .modelUnload:hover{border-color:var(--line-strong);color:var(--text);background:var(--surface-3)}
+/* The chip's extras drop by the composer's own width, not the window's, and the temperature always stays. */
+.composer{container-type:inline-size}
+@container(max-width:640px){.gpuRate{display:none}}
+@container(max-width:540px){.gpuVram{display:none}}
+@container(max-width:420px){.gpuLoad{display:none}}
+/* Turn avatar: the mark carries its own ring, so no border or disc behind it. */
+.jarvis .turnAvatar,.jarvis .companionTurn.first .turnAvatar{border:0;background:none;box-shadow:none}
+/* Rail app icon: the favicon's tile, so the tab and the app show the same mark. */
+.railMark{width:40px;height:40px;margin:2px 0 10px;border:1px solid var(--line-strong);border-radius:11px;background:var(--surface-2)}
+
+/* Setup wizard: numbered cards in one column; a step turns into a check when it is done. */
+.setupPage{display:grid;gap:16px;max-width:820px}
+.setupIntro h2{margin:0 0 4px;font-size:20px}.setupIntro p{margin:0;color:var(--muted)}
+.setupPage .setCard h3{display:flex;align-items:center;gap:10px;margin:0}
+.setupPage .setCard h3 small{font-size:12px;font-weight:400;color:var(--faint)}
+.setupPage .setCard>p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.setupPage .setCard>button{justify-self:start}
+.setupStep{display:grid;place-items:center;flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--line-strong);font-size:12px;color:var(--muted)}
+.setupStep.done{border-color:var(--ok);color:var(--ok)}
+.setupFacts{display:grid;margin:0;border:1px solid var(--line);border-radius:10px}
+.setupFacts div{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;padding:9px 14px;border-top:1px solid var(--line);font-size:13px}
+.setupFacts div:first-child{border-top:0}
+.setupFacts dt{color:var(--muted)}.setupFacts dd{margin:0;overflow-wrap:anywhere}
+.setupModels{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.setupModel{display:grid;grid-template-columns:1fr auto;align-items:start;gap:3px 10px;padding:12px 14px;min-height:0;text-align:left;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--text)}
+.setupModel:hover:not(:disabled){background:var(--surface-2)}
+.setupModel[aria-checked=true]{border-color:var(--text);background:var(--surface-2)}
+.setupModel:disabled{opacity:.45}
+.setupModelHead{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.setupModelHead strong{font-size:14px;font-weight:600}
+.setupModelHead em{font-style:normal;font-size:11px;padding:1px 7px;border-radius:999px;background:var(--brand-soft);color:var(--brand)}
+.setupModelHead em.have{background:#4ade801a;color:var(--ok)}
+.setupModel>small{grid-column:1;font-size:12px;color:var(--muted)}
+.setupModel .setupNote{grid-column:1/-1;color:var(--faint);line-height:1.4}
+.setupFit{grid-column:2;grid-row:1;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--muted)}
+.fit-gpu .setupFit{border-color:#4ade8066;color:var(--ok)}.fit-cpu .setupFit{border-color:#e0b25a66;color:var(--gold)}
+.setupTask{display:grid;gap:6px}
+.setupTask small{font-size:12px;color:var(--muted)}
+.setupTask.failed small{color:var(--danger)}.setupTask.done small{color:var(--ok)}
+.setupBar{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.setupBar i{display:block;height:100%;background:var(--brand);transition:width .5s var(--ease)}
+.setupDone{display:flex;gap:10px;align-items:center}

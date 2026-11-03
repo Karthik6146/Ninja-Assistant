@@ -28,10 +28,19 @@ it('sends on Enter but not Shift+Enter or while a Hindi IME is composing',()=>{
 
 it('greets by time of day',()=>{expect(greeting(2)).toBe('Working late');expect(greeting(9)).toBe('Good morning');expect(greeting(14)).toBe('Good afternoon');expect(greeting(20)).toBe('Good evening')});
 
-import {replyNotice} from './AssistantConsole';
+import {replyNotice,dayLabel} from './AssistantConsole';
 describe('replyNotice',()=>{
  it('splits the verification notice from the reply text',()=>{
   expect(replyNotice('No tool action was verified for this reply.\n\nOpened Spotify.')).toEqual({notice:'No tool action was verified for this reply.',body:'Opened Spotify.'});
   expect(replyNotice('Done, sir.')).toEqual({notice:'',body:'Done, sir.'});
+ });
+});
+describe('history dates',()=>{
+ it('labels today, yesterday and older days',()=>{
+  const now=new Date(2026,10,2,10),at=(d:Date)=>d.getTime()/1000;
+  expect(dayLabel(at(new Date(2026,10,2,0,5)),now)).toBe('Today');
+  expect(dayLabel(at(new Date(2026,10,1,23,59)),now)).toBe('Yesterday');
+  expect(dayLabel(at(new Date(2026,9,30,12)),now)).toContain('30');
+  expect(dayLabel(at(new Date(2025,9,30,12)),now)).toContain('2025');
  });
 });

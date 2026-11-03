@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from filelock import Timeout as LockTimeout
 from . import db, media, workflow, content, tools
-from .config import ROOT, DATA, ORIGINS, ROOTS, SESSIONS, approved_path, artifact, new_session, session_ok, token_ok
+from .config import ROOT, DATA, CREATOR, ORIGINS, ROOTS, SESSIONS, TOKEN, approved_path, artifact, launch_ok, new_session, session_ok, token_ok
 from . import youtube_auth
 from .youtube_routes import router as youtube_router
 from .workspace_routes import router as workspace_router
@@ -44,9 +44,9 @@ async def guard(request: Request, call_next):
     if request.url.path.startswith('/api'):
         origin=request.headers.get('origin')
         if origin and origin not in ORIGINS: return JSONResponse({'detail':'Origin denied'},403)
-        if request.url.path!='/api/session' and not (token_ok(request.headers.get('x-ninja-token')) or session_ok(request.cookies.get('ninja_session'))):
+        if request.url.path not in ('/api/session','/api/launch') and not (token_ok(request.headers.get('x-ninja-token')) or session_ok(request.cookies.get('ninja_session'))):
             return JSONResponse({'detail':'Local access token required'},401)
-        if request.method not in ('GET','HEAD','OPTIONS') and request.url.path!='/api/session':
+        if request.method not in ('GET','HEAD','OPTIONS') and request.url.path not in ('/api/session','/api/launch'):
             if not token_ok(request.headers.get('x-ninja-token')): return JSONResponse({'detail':'Mutation token required'},403)
             if db.stopped() and request.url.path!='/api/emergency': return JSONResponse({'detail':'Emergency stop active'},409)
     return await call_next(request)
@@ -73,6 +73,15 @@ def session(body: Session):
     response.set_cookie('ninja_session',new_session(),httponly=True,samesite='strict',max_age=86400)
     return response
 
+class Launch(BaseModel): code: str
+@app.post('/api/launch')
+def launch(body: Launch):
+    """Trade the desktop launcher's one-time code for the token, so the app window signs in without pasting it."""
+    if not launch_ok(body.code): raise HTTPException(401,'Launch code expired; open Ninja from its shortcut again')
+    response=JSONResponse({'token':TOKEN})
+    response.set_cookie('ninja_session',new_session(),httponly=True,samesite='strict',max_age=86400)
+    return response
+
 @app.post('/api/session/logout')
 def logout(request: Request):
     SESSIONS.pop(request.cookies.get('ninja_session',''),None)
@@ -82,7 +91,7 @@ def logout(request: Request):
 
 @app.get('/api/status')
 def status():
-    return {'stopped':db.stopped(),'ffmpeg':bool(shutil.which('ffmpeg')),'ffprobe':bool(shutil.which('ffprobe')),'ollama':'configured' if os.getenv('OLLAMA_MODEL') else 'disconnected','cloud':'enabled' if os.getenv('CLOUD_ENABLED')=='true' else 'disabled','youtube':'connected' if youtube_auth.status()['connected'] else 'disconnected','instagram':'disconnected','threads':'disconnected','search':'disconnected','roots':[str(r) for r in ROOTS],'timezone':'Asia/Kolkata','caption_generation':'external-tool'}
+    return {'stopped':db.stopped(),'ffmpeg':bool(shutil.which('ffmpeg')),'ffprobe':bool(shutil.which('ffprobe')),'ollama':'configured' if os.getenv('OLLAMA_MODEL') else 'disconnected','cloud':'enabled' if os.getenv('CLOUD_ENABLED')=='true' else 'disabled','youtube':'connected' if youtube_auth.status()['connected'] else 'disconnected','instagram':'disconnected','threads':'disconnected','search':'disconnected','roots':[str(r) for r in ROOTS],'timezone':'Asia/Kolkata','caption_generation':'external-tool','creator':CREATOR}
 
 @app.get('/api/projects')
 def projects():
@@ -198,7 +207,17 @@ def file(id: str,name: str):
 @app.get('/api/jobs')
 def jobs():
     with db.connect() as c:
-        return [dict(r)|{'payload':json.loads(r['payload']),'result':json.loads(r['result']) if r['result'] else None} for r in c.execute('SELECT * FROM jobs ORDER BY created DESC LIMIT 200')]
+        rows=[dict(r)|{'payload':json.loads(r['payload']),'result':json.loads(r['result']) if r['result'] else None} for r in c.execute('SELECT * FROM jobs ORDER BY created DESC LIMIT 200')]
+        # Jarvis turns carry only the conversation id; the job's request key says which message started it.
+        ids=list({r['payload'].get('task') for r in rows if r['kind']=='agent_turn'}-{None})
+        bodies={id:json.loads(body) for id,body in c.execute("SELECT id,body FROM agent_tasks WHERE id IN (SELECT value FROM json_each(?))",(json.dumps(ids),))}
+    for r in rows:
+        task=bodies.get(r['payload'].get('task')) if r['kind']=='agent_turn' else None
+        if not task:continue
+        key=r.get('request_key') or ''
+        said={'jarvis-instruction-'+i.get('request_key',''):i.get('text') for i in task.get('instructions',[])}
+        r['title']=said.get(key) or ('Approval: '+task['text'] if key.startswith('jarvis-confirm-') else task['text'])
+    return rows
 
 @app.post('/api/jobs/{id}/cancel')
 def cancel(id: str):
@@ -286,15 +305,14 @@ def export_package(id: str):
     body=content.load(id)
     return Response(json.dumps(body,ensure_ascii=False,indent=2),media_type='application/json',headers={'Content-Disposition':'attachment; filename="content-package.json"'})
 
-app.include_router(youtube_router)
 app.include_router(workspace_router)
-from .video_routes import router as video_router
-app.include_router(video_router)
-from .studio_routes import router as studio_router
-app.include_router(studio_router)
-
-from .media_library import router as library_router
-app.include_router(library_router)
+from .setup_routes import router as setup_router
+app.include_router(setup_router)
+if CREATOR:
+    from .video_routes import router as video_router
+    from .studio_routes import router as studio_router
+    from .media_library import router as library_router
+    for creator_router in (youtube_router,video_router,studio_router,library_router):app.include_router(creator_router)
 
 from .assistant_desk import router as assistant_router
 app.include_router(assistant_router)

@@ -28,6 +28,8 @@ export const stopsSpeech=(text:string)=>STOP.test(words(text).join(' '));
 export const isEcho=(text:string,said:string)=>{const heard=words(text),spoken=new Set(words(said));return heard.length>0&&heard.filter(w=>spoken.has(w)).length/heard.length>=.6};
 export const extendsSpoken=(queued:string[],parts:string[])=>parts.length>=queued.length&&queued.every((p,i)=>parts[i]===p);
 export type OrbMode='idle'|'listening'|'thinking'|'speaking'|'standby'|'muted';
+// The floating widget shows a short label; the full state text still drives the voice logic.
+export const shortState=(state:string)=>state.replace(/^Listening — go ahead$/,'Listening').replace(/^Standby — say /,'Say ');
 export const orbMode=(state:string,muted:boolean):OrbMode=>muted?'muted':state.startsWith('Standby')?'standby':state==='Jarvis is speaking'?'speaking':['Understanding you','Jarvis is thinking','Preparing voice','Opening microphone'].includes(state)?'thinking':state.startsWith('Listening')||state==='Please repeat'?'listening':'idle';
 type Action={kind:'send';text:string;woke:boolean}|{kind:'ignore'|'greet'|'end'|'repeat'};
 // verified: the live listener already heard "hey jarvis", so a misheard wake word in the text is still a request.
@@ -246,7 +248,7 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
   <button type="button" className={'micButton'+(session?' on':'')} disabled={!status?.ready} aria-label={session?'Open voice mode':'Talk to Jarvis'} title={session?'Open voice mode':status?.ready?(wakeMode?'Start standby: say “Hey Jarvis”':'Talk to Jarvis'):status?.message||'Checking local voice…'} onClick={()=>{if(active.current)setMini(false);else start()}}><Icon name="mic" size={20}/></button>
   {!session&&error&&<p role="alert" className="voiceInlineError">{error}</p>}
   {session&&<div className={'voiceMode '+mode+(mini?' mini':'')} role={mini?undefined:'dialog'} aria-modal={mini?undefined:true} aria-label="Voice conversation with Jarvis">
-   {mini?<button type="button" className="miniOrb" onClick={()=>setMini(false)} aria-label={'Jarvis voice: '+state+'. Open voice mode'}>{orb(true)}<span>{muted?'Muted':state}</span></button>:<>
+   {mini?<button type="button" className={'miniOrb '+orbMode(state,muted)} onClick={()=>setMini(false)} aria-label={'Jarvis voice: '+state+'. Open voice mode'}><div className="voiceBars" ref={orbRef} aria-hidden="true"><i/><i/><i/><i/></div><span>{muted?'Muted':shortState(state)}</span></button>:<>
     <div className="voiceTop"><button type="button" className="ghost" aria-expanded={panelOpen} onClick={()=>setPanelOpen(!panelOpen)}><Icon name="settings" size={18}/>Voice settings</button><button type="button" className="ghost" onClick={()=>setMini(true)}>Minimize</button></div>
     <div className="voiceStage">
      {orb()}

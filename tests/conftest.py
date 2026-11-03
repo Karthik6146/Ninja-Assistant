@@ -2,6 +2,8 @@ import os
 import tempfile
 os.environ['NINJA_DATA']=tempfile.mkdtemp(prefix='ninja-tests-')
 os.environ['NINJA_TOKEN']='test-token'
+# The suite covers Studio and YouTube too; tests/test_setup.py checks the public build without them.
+os.environ.setdefault('NINJA_CREATOR','1')
 os.environ['LANGCHAIN_TRACING_V2']='false'
 import pytest
 from ninja import db

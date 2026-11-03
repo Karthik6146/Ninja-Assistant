@@ -1,4 +1,4 @@
-import {useEffect,useRef,useState} from 'react';
+import {Fragment,useEffect,useRef,useState} from 'react';
 import {ClientProps,toolName} from './TaskPanel';
 import {useDraft} from './useDraft';
 import ChatMarkdown from './ChatMarkdown';
@@ -7,13 +7,15 @@ import PrivateConversation from './PrivateConversation';
 import {Definition} from './StudioForm';
 import Icon from './Icons';
 import Drawer from './Drawer';
-import ModelPicker,{Models} from './ModelPicker';
-import TokenUsage,{kilo} from './TokenUsage';
+import ModelPicker,{GpuTemp,Models} from './ModelPicker';
+import TokenUsage,{kilo,CONTEXT} from './TokenUsage';
 type ConversationTurn={role:'user'|'assistant';content:string;revision:number};
 type ImageJob={job:string;state:string;step?:string;error?:string;outputs:{name:string;url:string}[]};
-export type AssistantTask={id:string;job:string;text:string;revision:number;state:string;step?:string;error?:string;reply:string;preview?:string;conversation?:ConversationTurn[];timing?:Record<string,number>;tokens?:{context:number;total:number};scopes?:{kind:string;id:string}[];request?:{response_mode?:string;language?:string};images?:ImageJob[];steps:{id:string;name:string;state:string;result?:{verified?:boolean;error?:string;value?:unknown}}[];draft?:{summary:string;questions:string[];limitations:string[];check:{issues:string[]};definition:Definition};children?:{run:string;job:string;state:string;step?:string}[];pending?:{approval:string;summary:string;decision?:string}};
+export type AssistantTask={id:string;job:string;text:string;created?:number;updated?:number;revision:number;state:string;step?:string;error?:string;reply:string;preview?:string;conversation?:ConversationTurn[];timing?:Record<string,number>;tokens?:{context:number;total:number};scopes?:{kind:string;id:string}[];request?:{response_mode?:string;language?:string};images?:ImageJob[];steps:{id:string;name:string;state:string;result?:{verified?:boolean;error?:string;value?:unknown}}[];draft?:{summary:string;questions:string[];limitations:string[];check:{issues:string[]};definition:Definition};children?:{run:string;job:string;state:string;step?:string}[];pending?:{approval:string;summary:string;decision?:string}};
 // Verification notices stay visible in the transcript but are not read aloud.
 const NOTICE=/^(No tool action was verified for this reply\.|Some tool calls failed;[^\n]*)\n\n/;
+// History groups chats under "Today", "Yesterday" or a date, newest activity first.
+export const dayLabel=(seconds:number,now=new Date())=>{const d=new Date(seconds*1000),days=Math.round((new Date(now).setHours(0,0,0,0)-new Date(d).setHours(0,0,0,0))/864e5);return days===0?'Today':days===1?'Yesterday':d.toLocaleDateString('en-IN',d.getFullYear()===now.getFullYear()?{weekday:'short',day:'numeric',month:'short'}:{day:'numeric',month:'short',year:'numeric'})};
 export const spokenReply=(reply:string)=>reply.replace(NOTICE,'');
 // The server's verification notice, shown as a small tag above the reply text.
 export const replyNotice=(reply:string)=>{const m=reply.match(NOTICE);return {notice:m?m[1]:'',body:m?reply.slice(m[0].length):reply}};
@@ -81,13 +83,17 @@ export default function AssistantConsole({api,action,busy,onTask,onDraft}:Client
  if(privateMode)return <PrivateConversation api={api} close={()=>{setPrivateMode(false);setContextEpoch(v=>v+1)}}/>;
  const tools=task?task.steps.filter(s=>s.name!=='Qwen'&&s.id.includes(':'+task.job+':')):[],failed=tools.some(s=>s.result?.verified===false||!!s.result?.error)||!!task?.error;
  const showCard=!!task&&(active||tools.length>0||!!task.error||!!task.draft||!!task.children?.length);
- const historyList=<ul className="historyList">{tasks.map(t=><li key={t.id}><button type="button" aria-current={t.id===selected||undefined} onClick={()=>{switchConversation(t.id);setHistory(false)}}><span>{t.text}</span><small>{t.state.replaceAll('_',' ')}{t.conversation?' · '+Math.ceil(t.conversation.length/2)+' turns':''}{t.tokens?' · '+kilo(t.tokens.total)+' tokens':''}</small></button></li>)}{!tasks.length&&<li><p>No conversations yet.</p></li>}</ul>;
+ // Deleting asks first: it also removes the chat's saved facts and its share of the token graphs.
+ const forget=(t:AssistantTask)=>{if(!confirm('Delete "'+t.text.slice(0,60)+'"? This cannot be undone.'))return;void action(async()=>{await api('/assistant/tasks/'+t.id+'/forget','POST',{});if(t.id===selected)switchConversation('');await refresh()})};
+ const forgetAll=()=>{if(!confirm('Delete all conversations? Chats that are still running are kept. This cannot be undone.'))return;void action(async()=>{const r=await api<{forgotten:number;skipped:number}>('/assistant/tasks/forget-all','POST',{});switchConversation('');setHistory(false);await refresh();if(r.skipped)setError(r.skipped+' running conversation'+(r.skipped>1?'s were':' was')+' kept. Stop it, then delete it.')})};
+ const when=(t:AssistantTask)=>t.updated||t.created||0;
+ const historyList=<ul className="historyList">{tasks.map((t,i)=><Fragment key={t.id}>{(i===0||dayLabel(when(tasks[i-1]))!==dayLabel(when(t)))&&<li className="historyDay"><h3>{when(t)?dayLabel(when(t)):'Earlier'}</h3></li>}<li><button type="button" aria-current={t.id===selected||undefined} onClick={()=>{switchConversation(t.id);setHistory(false)}}><span>{t.text}</span><small title={when(t)?new Date(when(t)*1000).toLocaleString('en-IN'):undefined}>{when(t)?new Date(when(t)*1000).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})+' · ':''}{t.state.replaceAll('_',' ')}{t.conversation?' · '+Math.ceil(t.conversation.length/2)+' turns':''}{t.tokens?' · '+kilo(t.tokens.total)+' tokens':''}</small></button>{!['queued','running'].includes(t.state)&&<button type="button" className="iconButton historyDelete" disabled={busy} aria-label={'Delete conversation: '+t.text} title="Delete" onClick={()=>forget(t)}><Icon name="trash" size={15}/></button>}</li></Fragment>)}{!tasks.length&&<li><p>No conversations yet.</p></li>}</ul>;
  const startPrivate=()=>{operation.current++;setContextEpoch(v=>v+1);setHistory(false);setPrivateMode(true)};
  return <section className="jarvis" aria-label="Jarvis assistant">
  <div className="jarvisBar">
   <button type="button" className="ghost" onClick={()=>setHistory(true)}><Icon name="history" size={18}/>History</button>
   <h2 className="jarvisTitle" title={task?.text}>{task?task.text:'New conversation'}</h2>
-  <button type="button" className="ghost tokenCount" onClick={()=>setUsage(true)} title={task?.tokens?'This chat: '+task.tokens.total.toLocaleString('en-IN')+' tokens. Latest message filled '+task.tokens.context.toLocaleString('en-IN')+' of 8,192 context tokens. Click for daily and monthly use.':'Token use by day and month'}>{task?.tokens?kilo(task.tokens.total)+' tokens':'Tokens'}</button>
+  <button type="button" className="ghost tokenCount" onClick={()=>setUsage(true)} title={task?.tokens?'This chat: '+task.tokens.total.toLocaleString('en-IN')+' tokens. Latest message filled '+task.tokens.context.toLocaleString('en-IN')+' of '+CONTEXT.toLocaleString('en-IN')+' context tokens. Click for daily and monthly use.':'Token use by day and month'}>{task?.tokens?kilo(task.tokens.total)+' tokens':'Tokens'}</button>
   <button type="button" className="ghost" disabled={!selected} onClick={()=>switchConversation('')}><Icon name="plus" size={18}/>New</button>
  </div>
  {reminders.filter(r=>r.state==='due').map(r=><div role="status" className="reminder" key={r.id}><Icon name="today" size={18}/><span>{r.text} · {new Date(r.due*1000).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</span><button className="ghost" onClick={()=>action(async()=>{await api('/assistant/reminders/'+r.id+'/dismiss','POST',{});setReminders(reminders.filter(x=>x.id!==r.id))})}>Dismiss</button></div>)}
@@ -98,8 +104,8 @@ export default function AssistantConsole({api,action,busy,onTask,onDraft}:Client
   {conversationTurns(task).map((m,i,all)=>{
    if(m.role==='assistant'&&m.content===PAUSED)return <p className="turnNote" key={task.id+':'+i}><Icon name="lock" size={12}/>Waited for your approval</p>;
    const {notice,body}=m.role==='assistant'?replyNotice(m.content):{notice:'',body:m.content},first=m.role==='assistant'&&(all[i-1]?.role!=='assistant'||all[i-1]?.content===PAUSED);
-   return <article className={'companionTurn '+m.role+(first?' first':'')} key={task.id+':'+i}>{m.role==='assistant'&&<span className="turnAvatar" aria-hidden="true">{first&&<Icon name="jarvis" size={15}/>}</span>}<div className="bubble"><span className="srOnly">{m.role==='user'?'You: ':'Jarvis: '}</span>{notice&&<span className="turnNotice"><Icon name="alert" size={12}/>{notice.startsWith('No tool')?'Nothing was actually done':'Some actions failed'}</span>}<ChatMarkdown text={body}/></div></article>})}
-  {active&&<article className="companionTurn assistant provisional"><span className="turnAvatar" aria-hidden="true"><Icon name="jarvis" size={16}/></span><div className="bubble">{task.preview&&showText?<><span className="srOnly">Jarvis is writing a live draft; actions appear only after verification: </span><ChatMarkdown text={task.preview}/><span className="caret" aria-hidden="true"/></>:<span className="typing" role="status" aria-label="Jarvis is thinking"><i/><i/><i/></span>}</div></article>}
+   return <article className={'companionTurn '+m.role+(first?' first':'')} key={task.id+':'+i}>{m.role==='assistant'&&<span className="turnAvatar" aria-hidden="true">{first&&<Icon name="jarvis" size={22}/>}</span>}<div className="bubble"><span className="srOnly">{m.role==='user'?'You: ':'Jarvis: '}</span>{notice&&<span className="turnNotice"><Icon name="alert" size={12}/>{notice.startsWith('No tool')?'Nothing was actually done':'Some actions failed'}</span>}<ChatMarkdown text={body}/></div></article>})}
+  {active&&<article className="companionTurn assistant provisional"><span className="turnAvatar" aria-hidden="true"><Icon name="jarvis" size={22}/></span><div className="bubble">{task.preview&&showText?<><span className="srOnly">Jarvis is writing a live draft; actions appear only after verification: </span><ChatMarkdown text={task.preview}/><span className="caret" aria-hidden="true"/></>:<span className="typing" role="status" aria-label="Jarvis is thinking"><i/><i/><i/></span>}</div></article>}
   {showCard&&task&&<details className={'toolCard'+(failed?' failed':'')} open={failed||undefined}>
    <summary>{active?<span className="spinner" aria-hidden="true"/>:<Icon name={failed?'alert':'check'} size={16}/>}<span className="toolTitle">{active?(task.step||'Working'):failed?'An action needs attention':tools.length?'Ran '+tools.length+' action'+(tools.length>1?'s':''):'Details'}</span>{typeof task.timing?.model_seconds==='number'&&<small>{task.timing.model_seconds.toFixed(1)} s</small>}<Icon name="chevron" size={16}/></summary>
    <div className="toolBody">
@@ -119,6 +125,7 @@ export default function AssistantConsole({api,action,busy,onTask,onDraft}:Client
   <textarea rows={1} aria-label={task?'Your next message':'Your message'} maxLength={task?3000:6000} value={draft.text} onChange={e=>setDraft({...draft,text:e.target.value})} placeholder="Message Jarvis… (Enter to send, Shift+Enter for a new line)" onKeyDown={e=>{if(sendKey({key:e.key,shiftKey:e.shiftKey,isComposing:e.nativeEvent.isComposing})){e.preventDefault();if(canSend)void action(()=>submit(draft.text))}}}/>
   <div className="composerBar">
   <ModelPicker api={api} onChange={setModels}/>
+  <GpuTemp api={api}/>
   <VoiceControls api={api} onText={text=>setDraft(current=>({...current,text}))} reply={task?.state==='completed'?spokenReply(task.reply):''} replyKey={task?.state==='completed'?task.id+':'+task.revision:''} draft={active?task?.preview||'':''} turnKey={task?task.id+':'+task.revision:''} failure={task?.state==='failed'?task.error||'The reply failed. Retry your message.':''} thinking={active||sending} contextKey={contextEpoch} language={draft.language||'en'} showText={showText} onShowText={value=>{setShowText(value);try{localStorage.setItem('jarvis-show-text',value?'1':'0')}catch{}}} onLanguage={language=>setDraft(current=>({...current,language}))} onUtterance={(text,signal)=>submit(text,signal)} announce={dueReminder?'Sir, a reminder: '+dueReminder.text:''} announceKey={dueReminder?'reminder:'+dueReminder.id:''}/>
   <button className="primary sendButton" disabled={!canSend} aria-label={active?'Update this turn':'Send message'} title={active?'Update this turn':'Send message'}>{sending?<span className="spinner" aria-hidden="true"/>:<Icon name="send" size={18}/>}</button>
   </div>
@@ -130,11 +137,10 @@ export default function AssistantConsole({api,action,busy,onTask,onDraft}:Client
   {historyList}
   <label>Channel for a new conversation<select value={boundChannel} disabled={!!selected} onChange={e=>{setDraft({...draft,channel:e.target.value});setContextEpoch(v=>v+1)}}><option value="">Personal conversation / local tasks</option>{channels.map(c=><option key={c.id} value={c.id}>{c.title}</option>)}</select></label>
   {selected?<small>An open conversation keeps its channel and shared documents. Start a new conversation to change them.</small>:<details><summary>Share a text document</summary><label>Approved text file path<input value={draft.file||''} onChange={e=>{setDraft(current=>({...current,file:e.target.value}));setFileConsent(false)}} placeholder="Path inside a NINJA_ROOTS folder"/></label><label className="libraryCheck"><input type="checkbox" checked={fileConsent} onChange={e=>setFileConsent(e.target.checked)}/>I reviewed this exact file; it contains no secrets or sensitive personal information and may be shared with local Qwen.</label><p>Other files stay unreadable to this request.</p></details>}
-  {task&&!active&&<button type="button" className="danger" disabled={busy} onClick={()=>action(async()=>{await api('/assistant/tasks/'+task.id+'/forget','POST',{});switchConversation('');setHistory(false);await refresh()})}>Forget this conversation</button>}
+  {!!tasks.length&&<button type="button" className="danger deleteAll" disabled={busy} onClick={forgetAll}><Icon name="trash" size={16}/>Delete all conversations</button>}
  </Drawer>
  <Drawer open={usage} onClose={()=>setUsage(false)} title="Token use" side="right">
-  {task?.tokens&&<p className="usageTotal">This chat: <strong>{task.tokens.total.toLocaleString('en-IN')}</strong> tokens · latest message used {Math.round(task.tokens.context/8192*100)}% of the 8k context</p>}
-  <TokenUsage api={api}/>
+  <TokenUsage api={api} chat={task?.tokens}/>
  </Drawer>
  </section>;
 }

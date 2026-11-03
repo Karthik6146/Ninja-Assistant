@@ -1,9 +1,11 @@
 import {ReactElement} from 'react';
 // One authored icon set: 24px grid, 1.75 stroke, round caps. currentColor so states recolor them.
 const paths:Record<string,ReactElement>={
- jarvis:<><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21"/></>,
+ // Arc reactor: one ring, a solid core and three spokes, so it still reads at 16px.
+ jarvis:<><circle cx="12" cy="12" r="8.75"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/><path d="M12 6.4V5M16.85 14.8l1.2.7M7.15 14.8l-1.2.7"/></>,
  studio:<><rect x="3" y="9" width="18" height="11" rx="2"/><path d="M3 9l2.2-4.6a1 1 0 0 1 .9-.6h12.8a1 1 0 0 1 .9.6L21 9M8.5 3.8 6.8 9M13.5 3.8 11.8 9M18.2 4 16.6 9"/></>,
  youtube:<><rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="M10 9.4v5.2l4.6-2.6z" fill="currentColor"/></>,
+ trash:<path d="M4 7h16M9 7V4.8a.8.8 0 0 1 .8-.8h4.4a.8.8 0 0 1 .8.8V7M6.5 7l.8 12.2a1 1 0 0 0 1 .8h7.4a1 1 0 0 0 1-.8L17.5 7M10 11v5.5M14 11v5.5"/>,
  activity:<path d="M3 12h4l3-7 4 14 3-7h4"/>,
  settings:<><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></>,
  stop:<><circle cx="12" cy="12" r="9"/><rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor" stroke="none"/></>,
@@ -19,6 +21,7 @@ const paths:Record<string,ReactElement>={
  check:<path d="M5 12.5l4.5 4.5L19 7.5"/>,
  alert:<><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4M12 17v.01"/></>,
  chevron:<path d="M9 6l6 6-6 6"/>,
+ info:<><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.01"/></>,
 };
 export default function Icon({name,size=20,label}:{name:keyof typeof paths;size?:number;label?:string}){
  return <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" role={label?'img':undefined} aria-label={label} aria-hidden={label?undefined:true}>{paths[name]}</svg>;

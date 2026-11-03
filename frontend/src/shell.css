@@ -1,62 +1,66 @@
-/* Night-workshop palette: navy-tinted surfaces, arc-reactor cyan for Jarvis and primary actions, gold for counts and receipts.
+/* Graphite palette after OriginKit and shadcn: neutral greys, a white primary button, colour only where it means something.
+   Arc-reactor cyan (--brand) is reserved for Jarvis itself; gold marks warnings, green done, red failures.
    Loaded after the older sheets so these tokens and shell rules win. */
 :root{
- --ground:#0a1017;--rail:#0d151e;--surface:#111a24;--surface-2:#172230;--surface-3:#1e2b3b;
- --line:#213042;--line-strong:#2d4157;--text:#e4edf5;--muted:#93a3b6;--faint:#7a8ba0;
- --accent:#3ccff2;--accent-strong:#86e6fb;--accent-ink:#03222c;--accent-soft:#3ccff21f;--accent-line:#3ccff259;
- --gold:#e5b452;--gold-ink:#241a05;--gold-soft:#e5b4521f;--ok:#5ed39b;--danger:#ff8a8a;--danger-soft:#ff8a8a1c;
+ --ground:#0f0f10;--rail:#111112;--surface:#161618;--surface-2:#1e1e21;--surface-3:#27272a;
+ --line:#262629;--line-strong:#36363a;--text:#f4f4f5;--muted:#a1a1aa;--faint:#71717a;
+ --accent:#f4f4f5;--accent-strong:#ffffff;--accent-ink:#0f0f10;--accent-soft:#ffffff10;--accent-line:#ffffff2b;
+ --brand:#3ccff2;--brand-soft:#3ccff21a;--brand-line:#3ccff24d;
+ --gold:#e0b25a;--gold-ink:#241a05;--gold-soft:#e0b25a1a;--ok:#4ade80;--danger:#f87171;--danger-soft:#f871711a;
+ --panel:var(--surface);--cms-mint:var(--accent);
  --ease:cubic-bezier(.22,1,.36,1);
  font-family:"Segoe UI Variable Text","Segoe UI","Nirmala UI",system-ui,sans-serif;color:var(--text);background:var(--ground);
 }
 body{background:var(--ground)}
-html{scrollbar-color:#2a3b4f transparent;scrollbar-width:thin}
-::selection{background:#3ccff24d;color:#fff}
+html{scrollbar-color:#3a3a3e transparent;scrollbar-width:thin}
+::selection{background:#ffffff33;color:#fff}
 input,textarea,[contenteditable]{caret-color:var(--accent)}
-h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI","Nirmala UI",system-ui,sans-serif;color:var(--text)}
+h1,h2,h3,h4{font-family:"Segoe UI Variable Display","Segoe UI","Nirmala UI",system-ui,sans-serif;color:var(--text);font-weight:600;letter-spacing:-.01em}
 p{color:var(--muted)}
-a{color:var(--accent-strong);text-underline-offset:3px}
-label,summary{color:#c3cfdb}
-code{color:var(--accent-strong)}
-pre{color:#b9c8d8}
+a{color:var(--text);text-decoration-color:#ffffff4d;text-underline-offset:3px}a:hover{text-decoration-color:currentColor}
+label,summary{color:#d4d4d8}
+code{color:#e4e4e7;background:var(--surface-2);padding:1px 5px;border-radius:5px;font-size:.92em}pre code{background:none;padding:0}
+pre{color:#d4d4d8}
 .eyebrow,.cmsEyebrow{display:none}
 
-button,.button{background:var(--surface-2);border-color:var(--line-strong);color:var(--text);border-radius:10px;transition:background-color .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease),transform .12s var(--ease)}
+button,.button{background:var(--surface-2);border-color:var(--line-strong);color:var(--text);border-radius:8px;font-weight:500;transition:background-color .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease),transform .12s var(--ease)}
 button:hover,.button:hover{background:var(--surface-3)}
 button:active:not(:disabled){transform:translateY(1px)}
 .primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
-.primary:hover{background:var(--accent-strong)}
+.primary:hover{background:#e4e4e7;border-color:#e4e4e7}
+.primary:disabled{background:var(--surface-3);border-color:var(--surface-3);color:var(--faint)}
 .ghost{background:transparent;border-color:transparent;color:var(--muted)}
 .ghost:hover{background:var(--surface-2);color:var(--text)}
 .iconButton{min-height:36px;width:36px;padding:0;background:transparent;border-color:transparent;color:var(--muted)}
 .iconButton:hover{color:var(--text)}
-.danger{background:var(--danger-soft);color:var(--danger);border-color:#ff8a8a40}
-:is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.danger{background:transparent;color:var(--danger);border-color:#f8717140}.danger:hover{background:var(--danger-soft)}
+:is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:2px solid #a1a1aa;outline-offset:2px}
 input,select,textarea{background:var(--ground);border-color:var(--line-strong);color:var(--text)}
 /* Native dropdown lists follow the dark theme instead of the light system popup. */
 select{color-scheme:dark}option,optgroup{background:var(--surface);color:var(--text)}
-input:focus,select:focus,textarea:focus{border-color:var(--accent-line)}
+input:focus,select:focus,textarea:focus{border-color:#52525b;box-shadow:0 0 0 3px #ffffff0d}
 input[type=checkbox],input[type=range],progress{accent-color:var(--accent)}
 
-.card{background:var(--surface);border-color:var(--line);border-radius:14px;box-shadow:0 12px 32px -20px #000d}
-.state{background:var(--surface-3);color:#c9d6e3}
-.state.completed{background:#5ed39b1f;color:var(--ok)}
+.card{background:var(--surface);border-color:var(--line);border-radius:12px;box-shadow:none}
+.state{background:var(--surface-3);color:#d4d4d8}
+.state.completed{background:#4ade801a;color:var(--ok)}
 .state.failed{background:var(--danger-soft);color:var(--danger)}
-.state.running{background:var(--accent-soft);color:var(--accent-strong)}
+.state.running{background:var(--brand-soft);color:var(--brand)}
 .state.waiting_for_approval{background:var(--gold-soft);color:var(--gold)}
-.badge{background:var(--surface-3);color:#c9d6e3}
-.segmented button[aria-pressed=true],.selected{background:var(--accent-soft)!important;border-color:var(--accent-line)!important;color:var(--accent-strong)}
-.error{background:var(--danger-soft);border-color:#ff8a8a40;color:#ffdada}
+.badge{background:var(--surface-3);color:#d4d4d8}
+.segmented button[aria-pressed=true],.selected{background:var(--surface-3)!important;border-color:var(--line-strong)!important;color:var(--text)}
+.error{background:var(--danger-soft);border-color:#f8717140;color:#fecaca}
 .icon{flex:none;display:block}
 
 /* Rail: five places, each with icon and a word, so nothing has to be guessed. */
 .app{--rail-w:84px;--panel:0px;min-height:100vh}
 .app.hasPanel{--panel:360px}
 .rail{position:fixed;inset:0 auto 0 0;width:var(--rail-w);background:var(--rail);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:14px 8px;gap:8px;z-index:10}
-.railMark{color:var(--accent);display:grid;place-items:center;width:44px;height:44px;margin-bottom:8px}
+.railMark{color:var(--brand);display:grid;place-items:center;width:44px;height:44px;margin-bottom:8px}
 .rail ul{list-style:none;margin:0;padding:0;display:grid;gap:4px;width:100%}
 .railItem{display:flex;flex-direction:column;gap:5px;width:100%;min-height:58px;padding:8px 4px;background:transparent;border:0;border-radius:12px;color:var(--faint);font-size:11px;font-weight:500;position:relative}
 .railItem:hover{background:var(--surface);color:var(--text)}
-.railItem[aria-current=page]{color:var(--accent-strong);background:var(--accent-soft)}
+.railItem[aria-current=page]{color:var(--text);background:var(--surface-3)}
 .railCount{position:absolute;top:6px;right:16px;min-width:16px;height:16px;border-radius:8px;background:var(--gold);color:var(--gold-ink);font-size:10px;line-height:16px;padding:0 4px}
 .railStop{margin-top:auto;color:#c98a8a}
 .railStop:hover:not(:disabled),.railStop.engaged{background:var(--danger-soft);color:var(--danger)}
@@ -81,11 +85,14 @@ main{margin-left:var(--rail-w);margin-right:var(--panel);padding:18px 32px 40px;
 .drawer[open]{display:flex;flex-direction:column}
 .drawer.right{margin-left:auto;border-left:1px solid var(--line)}
 .drawer.left{border-right:1px solid var(--line)}
-.drawer::backdrop{background:#03070bb3}
-.drawer[open]{animation:drawerIn .28s var(--ease)}
-.drawer.right[open]{animation-name:drawerInRight}
-@keyframes drawerIn{from{transform:translateX(-28px);opacity:0}}
-@keyframes drawerInRight{from{transform:translateX(28px);opacity:0}}
+/* Drawers slide and fade both ways; the backdrop fades with them (closing used to be instant). */
+.drawer{transition:transform .3s var(--ease),opacity .22s ease,display .3s allow-discrete,overlay .3s allow-discrete}
+.drawer:not([open]){opacity:0;transform:translateX(-32px)}
+.drawer.right:not([open]){transform:translateX(32px)}
+@starting-style{.drawer[open]{opacity:0;transform:translateX(-32px)}.drawer.right[open]{transform:translateX(32px)}}
+.drawer::backdrop{background:#000000a6;backdrop-filter:blur(2px);transition:opacity .3s ease,display .3s allow-discrete,overlay .3s allow-discrete}
+.drawer:not([open])::backdrop{opacity:0}
+@starting-style{.drawer[open]::backdrop{opacity:0}}
 .drawerHead{display:flex;align-items:center;justify-content:space-between;padding:14px 14px 12px 22px;border-bottom:1px solid var(--line)}
 .drawerHead h2{margin:0;font-size:17px}
 .drawerBody{padding:18px 22px;overflow-y:auto;flex:1}
@@ -105,7 +112,7 @@ main{margin-left:var(--rail-w);margin-right:var(--panel);padding:18px 32px 40px;
  .taskPanel{width:100%;bottom:64px}
  .tabs{order:3;width:100%;overflow-x:auto}
 }
-@media(prefers-reduced-motion:reduce){.drawer[open]{animation:none}button,main{transition:none}}
+
 /* Legacy pieces outside the redesigned surfaces, brought onto the shell palette. */
 .libraryEyebrow{display:none}
 .hero{background:var(--surface);border-color:var(--line)}
@@ -116,3 +123,37 @@ main{margin-left:var(--rail-w);margin-right:var(--panel);padding:18px 32px 40px;
 .timeline li.last::after{display:none}
 .timeline small{color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
 .techLog summary{font-size:12px;color:var(--faint)}.techLog ol{list-style:none;padding:0;margin:8px 0 0;font-size:12px;color:var(--muted);display:grid;gap:4px}
+
+/* Settings: a status strip on top, then one card per area with dot + label rows. */
+.settingsPage{display:grid;gap:18px}
+.settingsPage .sectionTitle{margin-bottom:0}
+.setStatus{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.setStatus li{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 8px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.setStatus span{font-size:12px;color:var(--muted)}
+.setStatus strong{grid-column:2;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setDot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none}.setDot.ok{background:var(--ok)}
+.setCard{display:grid;gap:12px;margin:0}
+.setCard h3{margin:0;display:flex;align-items:baseline;gap:8px}.setCard h3 small{font-size:12px;font-weight:400;color:var(--muted)}
+.setCard>p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.setCard>small{color:var(--faint);font-size:12px;line-height:1.5}
+.setCard details>summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.setCard details[open]{display:grid;gap:10px}
+.setCard details p{margin:0;font-size:13px;color:var(--muted)}
+.setRow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.setRow>div{flex:1;min-width:0;display:grid;gap:2px}.setRow small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.setRow select{width:auto;max-width:260px;margin:0}
+.setChips{display:flex;flex-wrap:wrap;gap:8px}
+.setChips span{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px}
+.setFields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.setFields label{margin:0}
+.setTools{list-style:none;margin:0;padding:0;display:grid;gap:4px;max-height:260px;overflow:auto}
+.setTools li{display:flex;justify-content:space-between;gap:12px;font-size:12px}.setTools small{color:var(--muted)}
+.setPermissions{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:8px}
+.setPermissions li{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.setPermissions li>div{flex:1;min-width:0;display:grid;gap:2px}.setPermissions small{color:var(--muted);font-size:12px}
+.setPermissions select{width:auto;margin:0;min-height:32px;padding:4px 8px;font-size:12px}
+.setHead{display:flex;align-items:center;gap:10px}.setHead h3{flex:1}.setHead select{width:auto;margin:0}
+.setAdd{display:flex;gap:8px}.setAdd input{flex:1;min-width:0;margin:0}
+.setFacts{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.setFacts li{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.setFacts li>div{flex:1;min-width:0}.setFacts p{margin:0 0 2px;font-size:14px}.setFacts small{color:var(--muted);font-size:12px}
+

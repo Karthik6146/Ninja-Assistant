@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {acceptedTranscript,speechParts,draftSentences,extendsSpoken,wakeText,endsConversation,turnTiming,transcriptAction,orbMode,stopsSpeech,isEcho} from './VoiceControls';
+import {acceptedTranscript,speechParts,draftSentences,extendsSpoken,wakeText,endsConversation,turnTiming,transcriptAction,orbMode,shortState,stopsSpeech,isEcho} from './VoiceControls';
 describe('voice conversation acceptance',()=>{
  it('keeps uncertain speech and silence out of automatic task execution',()=>{
   expect(acceptedTranscript({text:'publish this',uncertain:true})).toBe(false);
@@ -82,5 +82,12 @@ describe('speech while Jarvis talks',()=>{
   const said='Of course, sir. You have one message from Vinay.';
   expect(isEcho('you have one message from vinay',said)).toBe(true);
   expect(isEcho('and remind me at 7 PM',said)).toBe(false);
+ });
+});
+describe('floating voice widget label',()=>{
+ it('shortens the listening and standby states only',()=>{
+  expect(shortState('Listening — go ahead')).toBe('Listening');
+  expect(shortState('Standby — say “Hey Jarvis”')).toBe('Say “Hey Jarvis”');
+  expect(shortState('Jarvis is speaking')).toBe('Jarvis is speaking');
  });
 });

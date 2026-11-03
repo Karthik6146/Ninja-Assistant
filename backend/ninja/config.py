@@ -11,6 +11,8 @@ DATA = (data_setting if data_setting.is_absolute() else ROOT / data_setting).res
 DATA.mkdir(parents=True, exist_ok=True)
 ROOTS = [Path(p).resolve() for p in os.getenv('NINJA_ROOTS', '').split(';') if p]
 # Only the origin the app is served from. Add http://127.0.0.1:5173 via NINJA_ORIGINS while running the Vite dev server.
+# Studio and YouTube are the owner's creator tools; the public release leaves them off. NINJA_CREATOR=1 turns them on.
+CREATOR = os.getenv('NINJA_CREATOR', '').strip().lower() in ('1', 'true', 'yes')
 ORIGINS = os.getenv('NINJA_ORIGINS', 'http://127.0.0.1:8000,http://localhost:8000').split(',')
 token_file = DATA / 'access-token'
 if not token_file.exists():
@@ -38,6 +40,18 @@ def new_session():
 def session_ok(sid):
     expires = SESSIONS.get(sid or '')
     return bool(expires and expires > time.time())
+
+
+def launch_ok(code):
+    """The desktop launcher's sign-in: scripts/ninja-app.ps1 writes a random code to data/launch-code and opens the app
+    with it. It works once, within two minutes; the file is deleted on the first attempt, right or wrong."""
+    path = DATA / 'launch-code'
+    try:
+        expected, age = path.read_text(encoding='utf-8').strip(), time.time() - path.stat().st_mtime
+        path.unlink()
+    except OSError:
+        return False
+    return bool(code) and len(expected) >= 32 and age < 120 and secrets.compare_digest(code.encode(), expected.encode())
 
 def approved_path(value: str, roots=None) -> Path:
     path = Path(value).resolve(strict=True)

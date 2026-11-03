@@ -267,3 +267,8 @@ tools.REGISTRY['file.undo']=tools.Tool('file.undo',UndoText,Result,'file.write',
 
 # Read-only research tools register themselves on import.
 from . import research_tools,device_tools,gmail,whatsapp,watch  # noqa: E402,F401
+
+# Workflow tools drive Studio, which only the creator build has (NINJA_CREATOR=1).
+from .config import CREATOR  # noqa: E402
+if not CREATOR:
+    for name in [n for n in tools.REGISTRY if n.startswith('workflow.')]:del tools.REGISTRY[name]

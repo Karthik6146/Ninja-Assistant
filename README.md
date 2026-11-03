@@ -111,29 +111,36 @@ flowchart LR
   - A history filter stops the model copying its own unbacked "please wait" replies.
 - **Credentials:** Google tokens are encrypted with Windows DPAPI. No account passwords are stored.
 
-## Quick start
+## Install
 
-Requirements: Windows 10/11, Python **3.11**, Node **22+**, [Ollama](https://ollama.com), FFmpeg and ffprobe on PATH. An NVIDIA GPU is recommended (8 GB fits the default setup).
+1. Download the latest **Ninja-x.y.z.zip** from [Releases](https://github.com/Karthik6146/Ninja-Assistant/releases) and unzip it anywhere, for example `Documents\Ninja`.
+2. Double-click **Install Ninja**. It installs Python 3.11 with winget if needed, sets up Ninja and adds a **Ninja** shortcut to the Desktop and Start menu.
+3. Ninja opens a **setup wizard** that reads your PC (memory, GPU and VRAM, CPU, free disk), recommends the largest model that runs fast on it, and installs Ollama, the model and optional voice for you, with progress.
+
+Needs Windows 10/11 with winget. An NVIDIA GPU with 6 GB or more is recommended; without one, models run on the CPU, slower. Run the wizard again any time from **Settings → AI model → Check PC and models**.
+
+Ninja lives in the notification area: closing the window keeps it running, clicking the tray icon reopens it, and the tray menu shows the server, GPU and model, frees GPU memory, toggles **Start with Windows** and quits.
+
+**From source** (needs Node 22+ too):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
-python scripts/setup-local-voice.py          # Whisper, Kokoro, listener models
-ollama pull qwen3.5:9b
-powershell -ExecutionPolicy Bypass -File scripts/start.ps1
+powershell -ExecutionPolicy Bypass -File scripts/install.ps1
 ```
 
-1. Open **http://127.0.0.1:8000**.
-2. Connect with the token from `.env` (`NINJA_TOKEN`) or `data/access-token`.
-3. Press the microphone, or say "Hey Jarvis" with the wake word on.
+`scripts/start.ps1` runs the server without the tray; open **http://127.0.0.1:8000** and connect with the token from `.env` (`NINJA_TOKEN`) or `data/access-token`.
+
+**Creator tools:** Studio (video editing and workflows) and YouTube publishing are off in the public build. Set `NINJA_CREATOR=1` in `.env` and restart to turn them on.
 
 **Optional connections**
 - **Gmail:** enable the Gmail API in your Google Cloud project, then **Settings → Gmail accounts**.
 - **WhatsApp:** install WhatsApp Desktop with notifications on.
-- **YouTube:** import your Google OAuth Desktop client on the **YouTube** page and connect a channel.
+- **YouTube** (creator build): import your Google OAuth Desktop client on the **YouTube** page and connect a channel.
 
 More: [User guide](docs/user-guide.md) · [Jarvis guide](docs/jarvis-guide.md) · [Architecture](docs/architecture.md)
 
 ## Development
+
+Build a release zip with `powershell -ExecutionPolicy Bypass -File scripts/make-release.ps1 -Version 1.0.0`; it prints the `gh release create` command to publish it.
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest                       # backend tests

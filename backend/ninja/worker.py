@@ -94,7 +94,9 @@ def main(lane='heavy'):
         from . import studio
         if lane=='control' and (spare is None or spare[0].poll() is not None):spare=prepare()
         try:
-            if lane=='heavy':studio.tick()
+            if lane=='heavy':
+                from .config import CREATOR
+                if CREATOR:studio.tick()
             else:
                 from . import assistant_events
                 assistant_events.tick()
