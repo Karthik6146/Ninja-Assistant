@@ -280,6 +280,24 @@ def _complete(prompt, provider='ollama', *, schema=None):
     return {'text':data['choices'][0]['message']['content'],'usage':data.get('usage',{}),'provider':'cloud'}
 
 
+def gpu():
+    """The first NVIDIA GPU's live name, load, VRAM and temperature, or None without an NVIDIA driver."""
+    import subprocess
+    try:
+        out=subprocess.run(['nvidia-smi','--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu','--format=csv,noheader,nounits'],
+                           capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0).stdout.splitlines()[0].split(', ')
+        return {'name':out[0],'load':int(out[1]),'memory_used':int(out[2])*2**20,'memory_total':int(out[3])*2**20,'temperature':int(out[4])}
+    except (OSError,subprocess.SubprocessError,IndexError,ValueError):return None
+
+def make_room():
+    """Qwen (5.4 GB) plus the GPU speech model (1.1 GB) leave an 8 GB card about 0.3 GB of headroom; once other apps take
+    it the driver pages the model to system RAM and a 7k-token prompt crawls past the 120 s timeout ("Local model request
+    failed"). Freeing the speech model first costs ~2 s on the next voice turn instead. True when it was freed."""
+    info=gpu()
+    if not info or info['memory_total']-info['memory_used']>=300*2**20:return False
+    from . import voice
+    voice.shutdown();return True
+
 def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048, retried=False):
     """Native local tool turn; partial text is provisional until done and validated."""
     from filelock import FileLock
@@ -296,7 +314,7 @@ def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048, retried
         return answer
     model=local_model()
     if not model:raise ValueError('Select an installed Ollama model in Settings')
-    body={'model':model,'messages':messages,'tools':schemas,'stream':on_text is not None,'think':False,'keep_alive':-1,'options':{'num_predict':max_tokens,'num_ctx':8192,'temperature':0}}
+    body={'model':model,'messages':messages,'tools':schemas,'stream':on_text is not None,'think':False,'keep_alive':-1,'options':{'num_predict':max_tokens,'num_ctx':8192,'temperature':0.3 if retried else 0}}
     started=time.monotonic();first_text=None
     try:
         with FileLock(DATA/'model.lock',timeout=0), httpx.Client(trust_env=False,timeout=httpx.Timeout(120,connect=5)) as client:
@@ -343,6 +361,9 @@ def agent_turn(messages, schemas, *, job, on_text=None, max_tokens=2048, retried
             if last is not None and '\\' in messages[last].get('content',''):
                 fixed=messages[:last]+[dict(messages[last],content=messages[last]['content'].replace('\\','/'))]+messages[last+1:]
                 return agent_turn(fixed,schemas,job=job,on_text=on_text,max_tokens=max_tokens,retried=True)
+            # Qwen 3.5 also writes malformed tool-call XML on some ordinary prompts ("Open my Downloads folder" fails
+            # one run and passes the next); one retry at a little temperature usually lands a well-formed call.
+            return agent_turn(messages,schemas,job=job,on_text=on_text,max_tokens=max_tokens,retried=True)
         raise ValueError('Local model request failed. Start Ollama or choose an installed tool-capable model, then retry') from None
     except httpx.HTTPError:raise ValueError('Local model request failed. Start Ollama or choose an installed tool-capable model, then retry') from None
     if db.cancelled(job):raise media.Cancelled()

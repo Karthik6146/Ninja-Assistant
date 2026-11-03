@@ -7,6 +7,9 @@ import Automations from './Automations';
 import Recordings from './Recordings';
 import AssistantHome from './AssistantHome';
 import AssistantConsole from './AssistantConsole';
+// Read before the area effect rewrites the hash: #voice means start voice mode at once (tray "Voice in background").
+const AUTO_VOICE=/^#voice(?![\w-])/.test(location.hash)||sessionStorage.getItem('ninja-auto-voice')==='1';
+sessionStorage.removeItem('ninja-auto-voice');
 import './assistant.css';
 import {Launch} from './GuidedStudio';
 import ContentCMS from './ContentCMS';
@@ -49,6 +52,9 @@ function App(){
  // The desktop launcher opens #launch=<one-time code>: trade it for the token once, drop it from the address, reload signed in.
  useEffect(()=>{const code=new URLSearchParams(location.hash.slice(1)).get('launch');
   if(!code){if(token)action(login);return}
+  // #launch=<code>&voice: start voice mode after the sign-in reload (tray "Voice in background"). Remembered in
+  // sessionStorage because the area effect below rewrites the hash before the reload happens.
+  if(new URLSearchParams(location.hash.slice(1)).has('voice'))sessionStorage.setItem('ninja-auto-voice','1');
   history.replaceState(null,'',location.pathname+location.search);
   action(async()=>{const v=await api<{token:string}>('/launch','POST',{code});sessionStorage.setItem('ninja-token',v.token);location.reload()})},[]);
  useEffect(()=>{if(!connected)return;let inflight=false;const timer=setInterval(async()=>{if(inflight)return;inflight=true;try{await refresh()}catch{setOnline(false)}finally{inflight=false}},2500);return()=>clearInterval(timer)},[connected,token]);
@@ -80,7 +86,7 @@ function App(){
    {!online&&<div className="error" role="status">Connection interrupted. Saved conversations and tasks remain on disk; reconnecting automatically.</div>}
    {stopped&&<div className="error" role="alert">Emergency stop is active. Resume execution to run tasks. Already scheduled YouTube publications must be cancelled in YouTube.</div>}
    {connected&&setup?<SetupWizard {...props} onDone={()=>{setSetup(false);go('Jarvis')}}/>:!connected?<section className="login"><Icon name="jarvis" size={44}/><h2>Your workspace, on your computer.</h2><p>Connect with the token in data/access-token, or your configured NINJA_TOKEN. No online account is needed.</p><form onSubmit={e=>{e.preventDefault();action(login)}}><label>Local access token<input type="password" autoComplete="off" value={token} onChange={e=>setToken(e.target.value)}/></label><button className="primary" disabled={busy||!token}><Icon name="lock" size={18}/>Connect</button></form></section>:<>
-    {area==='Jarvis'&&<><AssistantConsole {...props} onTask={onTask} onDraft={workflow=>studioLaunch({workflow,mode:'clips',projects:[],nonce:Date.now()})}/>
+    {area==='Jarvis'&&<><AssistantConsole {...props} autoVoice={AUTO_VOICE} onTask={onTask} onDraft={workflow=>studioLaunch({workflow,mode:'clips',projects:[],nonce:Date.now()})}/>
      <Drawer open={today} onClose={()=>setToday(false)} title="Today" side="right"><AssistantHome {...props} settings={()=>{setToday(false);go('Settings')}}/></Drawer></>}
     {area==='Studio'&&studio==='Media Library'&&<Recordings {...props} projects={projects} jobs={jobs} refresh={refresh} onTask={onTask} tool={integrations?.caption||null} start={(mode,ids)=>studioLaunch({mode,projects:ids,nonce:Date.now()})}/>}
     {area==='Studio'&&(studio==='Video Studio'||studio==='Automations')&&<ContentCMS key={studio} {...props} projects={projects} refresh={refresh} onTask={onTask} settings={()=>go('Settings')} launch={studio==='Video Studio'?launch:undefined} onLaunch={()=>setLaunch(undefined)} automations={studio==='Automations'}/>}

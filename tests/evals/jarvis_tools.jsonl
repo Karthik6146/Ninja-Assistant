@@ -13,6 +13,7 @@
 {"text":"Remind me tomorrow at 7 PM to check my upload queue","expect":["assistant.remind"]}
 {"text":"kal subah 9 baje yaad dilana ki thumbnail banana hai","expect":["assistant.remind"]}
 {"text":"Remember that I prefer short Hinglish answers","expect":["memory.remember"]}
+{"text":"Remember that my favourite colour is blue","expect":["memory.remember"]}
 {"text":"What do you remember about my preferences?","expect":["memory.search","none"]}
 {"text":"Check CPU and memory usage","expect":["system.monitor"]}
 {"text":"मेरा computer slow चल रहा है, check करो क्या चल रहा है","expect":["system.monitor"]}

@@ -116,7 +116,7 @@ def test_resident_timeout_kills_only_owned_process_and_retry_recovers(monkeypatc
 def test_speech_exception_does_not_leak_transcript_and_removes_audio(resident_fixture):
     source,script,root=resident_fixture
     script.write_text(script.read_text().replace("return {'words':[]}","raise ValueError('PRIVATE CONTENT NOT FOR LOGS')"))
-    with pytest.raises(ValueError,match='ClipX speech recognition failed') as error:voice.transcribe(source,'en')
+    with pytest.raises(ValueError,match='Speech recognition failed') as error:voice.transcribe(source,'en')
     assert 'PRIVATE CONTENT' not in str(error.value) and voice._engine is None
 
 
@@ -142,7 +142,7 @@ def test_helper_rejects_path_input_and_invalid_audio(resident_fixture):
         engine.process.stdin.write(json.dumps({'id':'1'*32,'language':'en','audio':str(source)}).encode()+b'\n');engine.process.stdin.flush()
         assert 'error' in engine.responses.get(timeout=3)
         engine.audio.write_bytes(b'not a WAV')
-        with pytest.raises(ValueError,match='ClipX speech recognition failed'):engine.recognize('en')
+        with pytest.raises(ValueError,match='Speech recognition failed'):engine.recognize('en')
         assert not engine.audio.exists()
     finally:engine.close()
 

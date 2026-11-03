@@ -5,22 +5,28 @@ Run from the project root:
 Flags: replies that claimed or promised an action no tool backed, failed tools, turns that needed the
 recovery retry, slow turns, and transcripts the speech recogniser probably garbled. Read-only.
 """
-import argparse,json,sys,time
+import argparse,json,re,sys,time
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'backend'))
 from ninja import db,agent,assistant_tools  # noqa: F401  (assistant_tools fills the tool registry)
 
 SLOW=8.0
+CLAIMED=re.compile(r"\bI(?:'ve| have)? (?:saved|added|set|done|noted|remembered|opened|sent|created)\b|\b(?:saved|done|noted|set)\b[^.]{0,40}(?:for you|sir)|कर (?:दिया|दी|लिया)|हो गया",re.I)
 
 def review(task):
     issues=[];messages=task.get('messages',[])
     for i in sorted(agent.unbacked(messages)):
         asked=next((m['content'] for m in reversed(messages[:i]) if m['role']=='user' and not agent.recovery(m)),'')
         issues.append(('unbacked claim',asked,messages[i]['content']))
-    for m in messages:
+    for i,m in enumerate(messages):
         if m.get('role')=='tool':
             result=json.loads(m['content']) if m['content'].startswith('{') else {}
-            if result.get('verified') is False and not result.get('declined'):issues.append(('tool failed',m.get('tool_name',''),result.get('error','')))
+            error=result.get('error','')
+            reply=next((n['content'] for n in messages[i+1:] if n.get('role')=='assistant' and n.get('content')),'')
+            # "Sir declined" and "No tool needed" are the app refusing on purpose; the failure is Qwen claiming success anyway.
+            if result.get('declined'):
+                if CLAIMED.search(reply):issues.append(('claimed after decline',m.get('tool_name',''),reply))
+            elif result.get('verified') is False and not error.startswith('No tool needed'):issues.append(('tool failed',m.get('tool_name',''),error))
     seconds=task.get('timing',{}).get('model_seconds')
     if isinstance(seconds,(int,float)) and seconds>SLOW:issues.append(('slow turn',task['conversation'][-2]['content'] if len(task.get('conversation',[]))>1 else '',f'{seconds:.1f} s of model time'))
     for turn in task.get('conversation',[]):

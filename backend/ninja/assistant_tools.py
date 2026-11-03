@@ -33,16 +33,18 @@ def recall(params,timeout,context):
     from . import memory
     return {'data':{'memories':memory.context(params.query,context.scopes)}}
 class Remember(Strict):
-    kind:Literal['language','tone','editing']
-    value:Literal['English','Hindi','Hinglish','concise','detailed','friendly','formal','education','gaming','podcast','cinematic']
+    # kind=fact: one plain sentence the user asked to keep ("my favourite colour is blue"); memory.validate rejects
+    # secrets, health and ID numbers. Without it Qwen forced such facts into scope_id with value='English'.
+    kind:Literal['language','tone','editing','fact']
+    value:str=Field(min_length=1,max_length=200)
     scope_id:str=Field(default='me',max_length=100)
 def remember(params,timeout,context):
     from . import memory
     scope=next((s for s in context.scopes if s.id==params.scope_id),None)
     if scope is None:raise ValueError('Memory scope is not part of this task')
     choices={'language':{'English','Hindi','Hinglish'},'tone':{'concise','detailed','friendly','formal'},'editing':{'education','gaming','podcast','cinematic'}}
-    if params.value not in choices[params.kind]:raise ValueError('Unsupported preference combination. Save other non-sensitive facts manually in Settings.')
-    value=memory.remember('Preferred '+params.kind+': '+params.value,scope,source=context.task_id,context=context)
+    if params.kind!='fact' and params.value not in choices[params.kind]:raise ValueError('Unsupported preference combination. Save it as kind=fact instead.')
+    value=memory.remember(params.value if params.kind=='fact' else 'Preferred '+params.kind+': '+params.value,scope,source=context.task_id,context=context)
     return {'data':{k:value[k] for k in ('id','text','scope','source','revision')}}
 tools.REGISTRY['memory.search']=tools.Tool('memory.search',Recall,Result,'assistant.memory',5,recall,'routine',True,True)
 tools.REGISTRY['memory.remember']=tools.Tool('memory.remember',Remember,Result,'assistant.memory',5,remember,'routine',True,False)

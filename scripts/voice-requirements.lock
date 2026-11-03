@@ -1,8 +1,12 @@
 attrs==26.1.0
+av==18.1.0
 cloudpickle==3.1.2
+ctranslate2==4.8.2
 dlinfo==2.0.0
 espeakng-loader==0.2.4
+faster-whisper==1.2.1
 flatbuffers==25.12.19
+huggingface-hub==0.36.0
 joblib==1.6.0
 kokoro-onnx==0.6.1
 numpy==2.4.6
@@ -10,4 +14,6 @@ onnxruntime==1.31.0
 packaging==26.3
 phonemizer==3.4.0
 protobuf==7.36.2
+tokenizers==0.22.2
+tqdm==4.70.1
 typing_extensions==4.16.0

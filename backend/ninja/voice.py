@@ -1,4 +1,4 @@
-"""Short intentional speech through the existing standalone transcription tool."""
+"""Speech recognition for voice turns: a resident faster-whisper process (Ninja's own, or an existing ClipX install)."""
 import atexit,functools,json,math,os,queue,re,shutil,subprocess,tempfile,threading,time,unicodedata,uuid,wave
 from pathlib import Path
 from filelock import FileLock
@@ -75,13 +75,20 @@ def shutdown():
 atexit.register(shutdown)
 
 def components():
-    root,python,script=caption_config()
-    setting=os.getenv('JARVIS_VOICE_MODEL','')
+    """ClipX's CLI when a complete ClipX install is configured (its large-v3-turbo hears Hindi better); otherwise Ninja's
+    own scripts/speech-transcribe.py in the voice environment that the setup wizard installs."""
     from .neural_voice import home
+    try:clipx,python,script=caption_config()
+    except ValueError:clipx=None
+    root=clipx
+    if clipx is None or not python.is_file() or not script.is_file():
+        root,python,script=ROOT,home()/'venv/Scripts/python.exe',ROOT/'scripts/speech-transcribe.py'
+    setting=os.getenv('JARVIS_VOICE_MODEL','')
     installed=home()/'models/whisper-small'
     # ClipX's large-v3-turbo hears Hindi far better (74% vs 43% of key words on our benchmark, English 100% on both)
-    # for ~0.3 s more per turn and ~0.9 GB more GPU memory; small is the fallback when ClipX lacks it.
-    turbo=sorted((root/'.models/whisper/models--dropbox-dash--faster-whisper-large-v3-turbo/snapshots').glob('*/model.bin'))
+    # for ~0.3 s more per turn and ~0.9 GB more GPU memory; small is the fallback when ClipX lacks it. Either engine
+    # can load it, so it is used whenever the configured ClipX folder has it.
+    turbo=sorted((clipx/'.models/whisper/models--dropbox-dash--faster-whisper-large-v3-turbo/snapshots').glob('*/model.bin')) if clipx else []
     if setting:model=Path(setting).resolve()
     elif turbo:model=turbo[0].parent
     elif (installed/'model.bin').is_file():model=installed
@@ -96,7 +103,7 @@ def status():
     ready=python.is_file() and script.is_file() and (model/'model.bin').is_file()
     engine=_engine
     warm=bool(ready and engine is not None and engine.process.poll() is None and engine.fingerprint==_fingerprint((root,python,script,model)) and engine.warm)
-    return {'ready':ready,'warm':warm,'model':model.parent.parent.name.split('--')[-1] if model.parent.name=='snapshots' else model.name,'engine':'Existing standalone ClipX  /  warm GPU (CPU fallback)  /  offline','message':'Local English and Hindi recognition, reused between turns; names and numbers may still need correction.' if ready else 'Voice is not configured. Set your standalone Caption Tool folder in Settings and JARVIS_VOICE_MODEL to an existing multilingual model folder. No model is downloaded automatically.'}
+    return {'ready':ready,'warm':warm,'model':model.parent.parent.name.split('--')[-1] if model.parent.name=='snapshots' else model.name,'engine':('ClipX' if script.name=='transcribe-local.py' else 'Ninja')+' · GPU (CPU fallback) · offline','message':'Local English and Hindi recognition, reused between turns; names and numbers may still need correction.' if ready else 'Voice is not set up. Open Settings → AI model → Check PC and models → Set up voice.'}
 
 def native_wav(path):
     try:

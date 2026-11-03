@@ -26,7 +26,7 @@ The wizard opens on first start, and any time Ollama or a model is missing. Open
    - **Too big:** not enough memory or disk.
 
    The **Recommended** model is the largest one that runs fast. Press **Download** to install it; a progress bar shows the download, and the model is selected for Jarvis when it finishes.
-4. **Voice (optional).** Press **Set up voice** to download about 1.5 GB of speech models: speech recognition, Jarvis's voice and the "Hey Jarvis" wake word.
+4. **Voice (optional).** Press **Set up voice** to download about 1.5 GB of speech models: speech recognition, Jarvis's voice and the "Hey Jarvis" wake word. On PCs with an NVIDIA GPU it also installs about 2 GB of NVIDIA libraries so recognition runs on the GPU; otherwise it runs on the CPU.
 5. Press **Start using Jarvis**. **Skip for now** closes the wizard without finishing.
 
 | Your PC | Model the wizard picks |

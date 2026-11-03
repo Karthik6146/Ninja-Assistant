@@ -5,7 +5,7 @@ import Icon from './Icons';
 
 type Status={ready:boolean;message:string;voices:string[];default_voice?:string;live_ready?:boolean};
 type Transcript={text:string;uncertain?:boolean};
-type Props={api:API;onText:(text:string)=>void;reply:string;replyKey?:string;draft?:string;turnKey?:string;thinking?:boolean;failure?:string;contextKey?:string|number;language?:string;onLanguage?:(language:string)=>void;onUtterance?:(text:string,signal:AbortSignal)=>Promise<void>;onInterrupt?:()=>void;showText?:boolean;onShowText?:(value:boolean)=>void;announce?:string;announceKey?:string};
+type Props={api:API;onText:(text:string)=>void;reply:string;replyKey?:string;draft?:string;turnKey?:string;thinking?:boolean;failure?:string;contextKey?:string|number;language?:string;onLanguage?:(language:string)=>void;onUtterance?:(text:string,signal:AbortSignal)=>Promise<void>;onInterrupt?:()=>void;autoStart?:boolean;showText?:boolean;onShowText?:(value:boolean)=>void;announce?:string;announceKey?:string};
 type Speech={key:string;parts:string[];spoken:number;final:boolean;playing:boolean};
 export const acceptedTranscript=(result:Transcript)=>/[\p{L}\p{N}]/u.test(result.text)&&!result.uncertain;
 // Long sentences also break at commas (left piece ≥2 words, e.g. an opener like "जी सर,") so the first clause plays while Qwen keeps writing.
@@ -26,6 +26,8 @@ const STOP=/^(?:stop|wait|hold on|enough|cancel|ruko|ruk jao|bas karo|chup|chup 
 export const stopsSpeech=(text:string)=>STOP.test(words(text).join(' '));
 // Speakers can leak Jarvis's own voice into the mic; a "user" phrase made of his current words is that echo.
 export const isEcho=(text:string,said:string)=>{const heard=words(text),spoken=new Set(words(said));return heard.length>0&&heard.filter(w=>spoken.has(w)).length/heard.length>=.6};
+// The tray overlay shows what Jarvis has said so far in this reply.
+export const spokenSoFar=(q:{parts:string[];spoken:number})=>q.parts.slice(0,q.spoken).join(' ');
 export const extendsSpoken=(queued:string[],parts:string[])=>parts.length>=queued.length&&queued.every((p,i)=>parts[i]===p);
 export type OrbMode='idle'|'listening'|'thinking'|'speaking'|'standby'|'muted';
 // The floating widget shows a short label; the full state text still drives the voice logic.
@@ -48,7 +50,7 @@ export function transcriptAction(result:Transcript,awake:boolean,verified:boolea
 }
 // Mic audio -> 16 kHz int16 frames of 512 samples, posted to the page for the live WebSocket.
 const PCM_WORKLET="class P extends AudioWorkletProcessor{constructor(){super();this.b=new Int16Array(512);this.n=0}process(i){const c=i[0][0];if(c){for(let k=0;k<c.length;k++){const v=Math.max(-1,Math.min(1,c[k]));this.b[this.n++]=v<0?v*32768:v*32767;if(this.n===512){this.port.postMessage(this.b.buffer,[this.b.buffer]);this.b=new Int16Array(512);this.n=0}}}return true}}registerProcessor('pcm16',P)";
-export default function VoiceControls({api,onText,reply,replyKey='',draft='',turnKey='',thinking=false,failure='',contextKey='',language:preferredLanguage,onLanguage,onUtterance,onInterrupt,showText=false,onShowText,announce='',announceKey=''}:Props){
+export default function VoiceControls({api,onText,reply,replyKey='',draft='',turnKey='',thinking=false,failure='',contextKey='',language:preferredLanguage,onLanguage,onUtterance,onInterrupt,autoStart=false,showText=false,onShowText,announce='',announceKey=''}:Props){
  const [status,setStatus]=useState<Status|null>(null),[state,setState]=useState('Ready to talk'),[localLanguage,setLanguage]=useState('en'),[voice,setVoice]=useState(''),[error,setError]=useState(''),[session,setSession]=useState(false);
  const mounted=useRef(true),epoch=useRef(0),active=useRef(false),seenReply=useRef(replyKey),seenAnnounce=useRef(announceKey),failures=useRef(0);
  const recorder=useRef<MediaRecorder|null>(null),stream=useRef<MediaStream|null>(null),audio=useRef<HTMLAudioElement|null>(null),context=useRef<AudioContext|null>(null),timer=useRef<ReturnType<typeof setInterval>|null>(null),resumeTimer=useRef<ReturnType<typeof setTimeout>|null>(null),url=useRef('');
@@ -69,6 +71,9 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
  // What you say while Jarvis thinks or speaks is kept here and sent as your next turn once he finishes.
  const pending=useRef<string[]>([]);
  const busy=()=>queue.current.playing||!!audio.current||latest.current.thinking;
+ // Tells the tray overlay (scripts/ninja-app.ps1) what to show; it never blocks the conversation.
+ const overlay=useRef({state:'',text:''});
+ function report(state:'listening'|'speaking'|'idle',text=''){if(overlay.current.state===state&&overlay.current.text===text)return;overlay.current={state,text};void api('/assistant/overlay','POST',{state,text}).catch(()=>{})}
  function flushPending(){if(!pending.current.length||!active.current)return false;const text=pending.current.join(' ');pending.current=[];void handleTranscript({text},true).catch(e=>{if(mounted.current&&active.current)setError(String(e))});return true}
  function release(){if(timer.current)clearInterval(timer.current);timer.current=null;stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;if(recorder.current?.state==='recording')recorder.current.stop();recorder.current=null;void context.current?.close();context.current=null}
  function forget(key=''){queue.current={key,parts:[],spoken:0,final:false,playing:false}}
@@ -87,7 +92,7 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
    watcher.current=close;
   }catch{watcher.current=null}
  }
- function end(){pending.current=[];stopLive();micMeter.current=null;setMini(false);setPanelOpen(false);setMuted(false);setSaying('');if(idle.current)clearTimeout(idle.current);active.current=false;closing.current=false;epoch.current++;request.current?.abort();submission.current?.abort();if(resumeTimer.current)clearTimeout(resumeTimer.current);unwatch();release();silence();forget();if(mounted.current){setSession(false);setState('Ready to talk')}}
+ function end(){report('idle');pending.current=[];stopLive();micMeter.current=null;setMini(false);setPanelOpen(false);setMuted(false);setSaying('');if(idle.current)clearTimeout(idle.current);active.current=false;closing.current=false;epoch.current++;request.current?.abort();submission.current?.abort();if(resumeTimer.current)clearTimeout(resumeTimer.current);unwatch();release();silence();forget();if(mounted.current){setSession(false);setState('Ready to talk')}}
  const listeningLabel=()=>awake.current||!wake.current?'Listening — go ahead':'Standby — say “Hey Jarvis”';
  function sendMode(){const l=live.current;if(l?.ws.readyState===WebSocket.OPEN)l.ws.send(JSON.stringify({standby:wake.current&&!awake.current,language:latest.current.language}))}
  function stopLive(){const l=live.current;live.current=null;if(!l)return;l.ws.onclose=null;l.ws.close();l.node.port.onmessage=null;l.node.disconnect();l.media.getTracks().forEach(t=>t.stop());void l.ctx.close()}
@@ -109,7 +114,7 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
    live.current={ws,ctx,media,node};
    // Without barge-in the mic is muted while Jarvis talks, so speakers cannot feed his own voice back.
    node.port.onmessage=e=>{if(ws.readyState===WebSocket.OPEN&&!mutedRef.current&&(barge.current||!queue.current.playing))ws.send(e.data)};
-   ws.onopen=()=>{sendMode();setState(listeningLabel());idleLater()};
+   ws.onopen=()=>{sendMode();setState(listeningLabel());idleLater();report('listening')};
    ws.onmessage=e=>{void onLive(JSON.parse(e.data))};
    ws.onclose=()=>{if(active.current&&live.current?.ws===ws){end();setError('Live listening stopped. Start the conversation again.')}};
   }catch(e){end();setError('Microphone unavailable: '+String(e))}
@@ -143,6 +148,8 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
  function resume(delay=350){if(live.current){setState(listeningLabel());idleLater();return}const turn=epoch.current;if(resumeTimer.current)clearTimeout(resumeTimer.current);resumeTimer.current=setTimeout(()=>{if(mounted.current&&active.current&&turn===epoch.current)void listen(true)},delay)}
  useEffect(()=>{mounted.current=true;api<Status>('/assistant/voice').then(s=>{if(mounted.current){setStatus(s);let saved='';try{saved=localStorage.getItem('jarvis-neural-voice')||''}catch{}setVoice(s.voices.includes(saved)?saved:s.default_voice||s.voices[0]||'')}}).catch(e=>{if(mounted.current)setError(String(e))});return()=>{mounted.current=false;end()}},[]);
  useEffect(()=>{end();seenReply.current=replyKey},[contextKey]);
+ // Opened at #voice by the tray's "Voice in background": start as soon as the voice status is known.
+ useEffect(()=>{if(autoStart&&status?.ready&&!active.current)start()},[status]);
  useEffect(()=>{if(active.current&&failure){end();setError(failure)}},[failure]);
  async function listen(automatic:boolean){
   if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){end();setError('Open Ninja on localhost in a browser with microphone access.');return}
@@ -189,13 +196,13 @@ export default function VoiceControls({api,onText,reply,replyKey='',draft='',tur
     q.spoken++;
     // Prepare the next sentence while this one plays, instead of delaying all audio.
     pending=q.spoken<q.parts.length?fetchPart(q.parts[q.spoken]):null;
-    silence();url.current=URL.createObjectURL(result.blob);const player=new Audio(url.current);audio.current=player;meterPlayback(player);setSaying(q.parts[q.spoken-1]||'');
+    silence();url.current=URL.createObjectURL(result.blob);const player=new Audio(url.current);audio.current=player;meterPlayback(player);setSaying(q.parts[q.spoken-1]||'');report('speaking',spokenSoFar(q));
     await new Promise<void>((resolve,reject)=>{finishPlayback.current=resolve;player.onended=()=>resolve();player.onerror=()=>reject(new Error('Audio playback failed. Check your output device.'));player.play().then(()=>{if(current()){setState('Jarvis is speaking');if(marks.current.text&&!marks.current.voice){marks.current.voice=performance.now();setTiming(turnTiming(marks.current))}if(active.current&&!live.current)void watch()}}).catch(reject)});
     if(!current())return;
     if(!pending&&q.spoken<q.parts.length)pending=fetchPart(q.parts[q.spoken]);
    }
    q.playing=false;silence();
-   if(q.final){unwatch();if(closing.current){end();return}setState('Ready to talk');if(active.current&&!flushPending())resume()}else setState('Jarvis is thinking');
+   if(q.final){report(live.current?'listening':'idle');unwatch();if(closing.current){end();return}setState('Ready to talk');if(active.current&&!flushPending())resume()}else setState('Jarvis is thinking');
   }catch(e){q.playing=false;if(current()&&!controller.signal.aborted){silence();forget();setError('Could not speak: '+String(e));if(active.current&&!flushPending())resume()}}
  }
  function enqueue(key:string,parts:string[],final:boolean){

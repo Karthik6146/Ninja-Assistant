@@ -7,6 +7,12 @@ def install(root):
     python=folder/'venv/Scripts/python.exe'
     if not python.exists():venv.EnvBuilder(with_pip=True).create(folder/'venv')
     subprocess.run([str(python),'-m','pip','install','-r',str(Path(__file__).with_name('voice-requirements.lock'))],check=True)
+    # Recognition on the GPU needs NVIDIA's CUDA libraries; without an NVIDIA GPU it runs on the CPU.
+    try:nvidia=subprocess.run(['nvidia-smi','-L'],capture_output=True,timeout=10).returncode==0
+    except (OSError,subprocess.SubprocessError):nvidia=False
+    if nvidia:
+        print('NVIDIA GPU found: installing CUDA libraries for speech recognition (about 2 GB)',flush=True)
+        subprocess.run([str(python),'-m','pip','install','-r',str(Path(__file__).with_name('voice-gpu-requirements.lock'))],check=True)
     models=folder/'models';models.mkdir(exist_ok=True);records=[]
     release='https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/'
     stt='https://huggingface.co/Systran/faster-whisper-small/resolve/536b0662742c02347bc0e980a01041f333bce120/'

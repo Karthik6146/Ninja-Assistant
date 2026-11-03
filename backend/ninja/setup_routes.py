@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 from fastapi import APIRouter
 from pydantic import Field
-from . import adapters,db,listener,neural_voice
+from . import adapters,db,listener,neural_voice,voice
 from .agent_models import Strict
 from .config import ROOT
 router=APIRouter(prefix='/api/setup')
@@ -119,7 +119,7 @@ def pull(model):
     return work
 
 def install_voice(task):
-    task['message']='Downloading speech models (about 1.5 GB)…'
+    task['message']='Downloading speech models…'
     process=subprocess.Popen([sys.executable,str(ROOT/'scripts/setup-local-voice.py'),'--project',str(ROOT)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
                              text=True,encoding='utf-8',errors='replace',creationflags=CREATE_NO_WINDOW)
     last=''
@@ -136,7 +136,7 @@ class Pull(Strict):
 def state():
     specs=system();models,pick=fit(specs)
     return {'system':specs,'models':models,'recommended':pick,'ollama':ollama_state(),'current':adapters.local_model(),
-            'voice':{'ready':neural_voice.status()['ready'] and listener.ready()},'tasks':TASKS}
+            'voice':{'ready':neural_voice.status()['ready'] and listener.ready() and voice.status()['ready'],'gpu':bool(specs['gpu'])},'tasks':TASKS}
 
 @router.post('/ollama')
 def setup_ollama():run('ollama',install_ollama);return {'started':True}

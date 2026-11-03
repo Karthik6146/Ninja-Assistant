@@ -85,7 +85,7 @@ No terminal, no config files. You need Windows 10 or 11 with winget (built into 
 | No dedicated GPU, 16 GB RAM | `qwen3.5:4b` | Runs on the CPU; replies take longer |
 | No dedicated GPU, 8 GB RAM | `qwen3.5:2b` (2.7 GB) | Basic chats and simple commands |
 
-Voice adds about 1.5 GB of speech models. Without a GPU the model runs on the CPU and is slower.
+Voice adds about 1.5 GB of speech models, plus about 2 GB of NVIDIA libraries on PCs with an NVIDIA GPU. Without a GPU, the model and speech recognition run on the CPU and are slower.
 
 ### Using it
 

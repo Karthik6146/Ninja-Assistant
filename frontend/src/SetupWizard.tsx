@@ -5,7 +5,7 @@ import Icon from './Icons';
 type Task={state:'running'|'done'|'failed';progress:number|null;message:string};
 type Model={model:string;size:number;label:string;note:string;fit:'gpu'|'cpu'|'no'};
 type Setup={system:{ram:number|null;cpu:string|null;cores:number|null;disk_free:number;gpu:{name:string;vram:number}|null;other_gpus:string[]};
- models:Model[];recommended:string|null;ollama:{installed:boolean;running:boolean;models:string[]};current:string;voice:{ready:boolean};tasks:Record<string,Task>};
+ models:Model[];recommended:string|null;ollama:{installed:boolean;running:boolean;models:string[]};current:string;voice:{ready:boolean;gpu:boolean};tasks:Record<string,Task>};
 const gb=(bytes:number|null|undefined)=>bytes==null?'—':(bytes/2**30).toFixed(bytes<10*2**30?1:0)+' GB';
 const FIT={gpu:['Fast','Runs fully on your GPU'],cpu:['Slow','Spills onto the CPU and RAM'],no:['Too big','Not enough memory or disk']} as const;
 
@@ -58,7 +58,7 @@ export default function SetupWizard({api,action,busy,onDone}:ClientProps&{onDone
   </section>
 
   <section className="card setCard"><h3><span className={'setupStep'+(setup.voice.ready?' done':'')}>{setup.voice.ready?<Icon name="check" size={14}/>:'4'}</span>Voice <small>optional</small></h3>
-   <p>{setup.voice.ready?'Ready: speech recognition, Jarvis\'s voice and the "Hey Jarvis" wake word.':'Talk to Jarvis and hear replies. Downloads about 1.5 GB of speech models. The wake-word model is for personal, non-commercial use.'}</p>
+   <p>{setup.voice.ready?'Ready: speech recognition, Jarvis\'s voice and the "Hey Jarvis" wake word.':'Talk to Jarvis and hear replies. Downloads about 1.5 GB of speech models'+(setup.voice.gpu?', plus about 2 GB of NVIDIA libraries so recognition runs on your GPU':'; recognition runs on the CPU')+'. The wake-word model is for personal, non-commercial use.'}</p>
    {!setup.voice.ready&&<button type="button" disabled={busy||tasks.voice?.state==='running'} onClick={()=>start('voice')}>Set up voice</button>}
    {status('voice')}
   </section>

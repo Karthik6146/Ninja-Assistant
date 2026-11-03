@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import Field
 from . import agent,db,permissions,tools
 from .agent_models import Request,Instruction,Strict
-from . import assistant_tools
+from . import assistant_tools,adapters
 router=APIRouter(prefix='/api/assistant')
 
 class ModelChoice(Strict):
@@ -39,14 +39,7 @@ def choose_model(body:ModelChoice):
         if body.provider=='ollama':c.execute("INSERT OR REPLACE INTO preferences VALUES('ollama_model',?)",(body.model,))
     return models()
 
-def gpu():
-    """The first NVIDIA GPU's live name, load, VRAM and temperature, or None without an NVIDIA driver."""
-    import subprocess
-    try:
-        out=subprocess.run(['nvidia-smi','--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu','--format=csv,noheader,nounits'],
-                           capture_output=True,text=True,timeout=3,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0).stdout.splitlines()[0].split(', ')
-        return {'name':out[0],'load':int(out[1]),'memory_used':int(out[2])*2**20,'memory_total':int(out[3])*2**20,'temperature':int(out[4])}
-    except (OSError,subprocess.SubprocessError,IndexError,ValueError):return None
+def gpu():return adapters.gpu()
 
 def speed(model):
     """Speeds over the model's last 20 replies, from Ollama's own token counts and durations; None before its first reply."""
@@ -253,6 +246,8 @@ async def live_voice(websocket:WebSocket):
     except (WebSocketDisconnect,RuntimeError):pass
     finally:
         engine.detach(sink);task.cancel()
+        # A closed window never reports idle itself; the dropped socket tells the tray overlay that voice stopped.
+        OVERLAY.update(seq=OVERLAY['seq']+1,state='idle',text='')
 
 @router.post('/warm')
 def warm_chat():
@@ -302,6 +297,17 @@ class Speech(Strict):
 def speak(body:Speech):
     return Response(voice.speak(body.text,body.voice),media_type='audio/wav',headers={'Cache-Control':'no-store'})
 
+
+# What the tray overlay shows: the browser reports Jarvis's spoken reply as it plays; the tray polls the latest record.
+class OverlayState(Strict):
+    state:Literal['listening','thinking','speaking','idle']
+    text:str=Field(default='',max_length=600)
+OVERLAY={'seq':0,'state':'idle','text':''}
+@router.get('/overlay')
+def overlay():return OVERLAY
+@router.post('/overlay')
+def report_overlay(body:OverlayState):
+    OVERLAY.update(seq=OVERLAY['seq']+1,state=body.state,text=body.text);return OVERLAY
 
 from . import assistant_events
 @router.get('/reminders')

@@ -28,7 +28,7 @@ SOFTWARE.
 
 Optional isolated runtime: kokoro-onnx 0.6.1 (MIT), ONNX Runtime (MIT), Kokoro-82M v1.0 model/voices (Apache-2.0), phonemizer (GPL-3.0), bundled eSpeak NG (GPL-3.0). The setup installs upstream packages; no upstream source is copied into Ninja. Preserve the installed package licenses and model notices if redistributing. Kokoro Hindi voices hm_omega / hf_alpha have limited training coverage; pronunciation is not guaranteed.
 
-Speech recognition continues through the existing standalone caption tool and faster-whisper (MIT), with Systran/faster-whisper-small weights converted from OpenAI Whisper (MIT). Captions remain the standalone tool's responsibility.
+Speech recognition uses faster-whisper (MIT) and CTranslate2 (MIT), installed into the voice environment by `scripts/setup-local-voice.py`, with Systran/faster-whisper-small weights converted from OpenAI Whisper (MIT). If a standalone ClipX install is configured, its recognizer and model are used instead. On PCs with an NVIDIA GPU, voice setup also installs NVIDIA's CUDA libraries from PyPI (`nvidia-cublas-cu12`, `nvidia-cuda-nvrtc-cu12`, `nvidia-cudnn-cu12`), which are licensed by NVIDIA under the NVIDIA Software License Agreement and are not redistributed by this repository.
 
 Primary sources: https://github.com/thewh1teagle/kokoro-onnx ; https://huggingface.co/hexgrad/Kokoro-82M ; https://github.com/bootphon/phonemizer ; https://github.com/espeak-ng/espeak-ng ; https://github.com/SYSTRAN/faster-whisper ; https://huggingface.co/Systran/faster-whisper-small . Exact downloaded URLs, lengths and locally recorded SHA-256 hashes are in docs/voice-model-sources.json. These hashes record the installation; they are not a claim of an independent upstream signature.
 

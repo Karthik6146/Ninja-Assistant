@@ -40,3 +40,15 @@ def test_public_build_hides_studio_and_youtube():
           "assert not [n for n in tools.REGISTRY if n.startswith('workflow.')]\n")
     done=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,cwd=root/'backend')
     assert done.returncode==0,done.stderr[-800:]
+
+def test_voice_uses_ninjas_own_recognizer_without_clipx(monkeypatch,tmp_path):
+    from ninja import voice
+    def no_clipx():raise ValueError('Set the Caption Tool folder in Settings (your standalone ClipX folder).')
+    monkeypatch.setattr(voice,'caption_config',no_clipx)
+    monkeypatch.setenv('JARVIS_VOICE_HOME',str(tmp_path))
+    root,python,script,model=voice.components()
+    assert script.name=='speech-transcribe.py' and script.is_file() and python==tmp_path/'venv/Scripts/python.exe'
+    assert voice.status()['ready'] is False and 'Set up voice' in voice.status()['message']
+    # A configured but incomplete ClipX folder also falls back.
+    monkeypatch.setattr(voice,'caption_config',lambda:(tmp_path,tmp_path/'missing.exe',tmp_path/'missing.py'))
+    assert voice.components()[2].name=='speech-transcribe.py'

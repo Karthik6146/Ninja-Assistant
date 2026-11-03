@@ -32,4 +32,4 @@ Write-Host '3/3  Shortcuts'
 & (Join-Path $PSScriptRoot 'install-app.ps1')
 
 Write-Host 'Done. Opening Ninja; its setup wizard installs Ollama and a model that fits this PC.'
-Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile','-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'ninja-app.ps1') -WindowStyle Hidden
+Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile','-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-File',"`"$(Join-Path $PSScriptRoot 'ninja-app.ps1')`"" -WindowStyle Hidden

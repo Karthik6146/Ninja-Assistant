@@ -121,3 +121,13 @@ def test_selected_text_edit_is_undoable_and_recovery_does_not_overwrite_new_work
     output.write_text('After',encoding='utf-8')
     tools.invoke('file.undo',{'receipt':first['data']['receipt']},set(),context=context)
     assert path.read_text()=='Before' and not output.exists()
+
+def test_memory_remember_stores_plain_facts_but_not_sensitive_ones():
+    from ninja import memory
+    task=agent.create(Request(text='Remember that my favourite colour is blue',request_key='fact-memory'))
+    context=ctx(task['task'])
+    saved=tools.invoke('memory.remember',{'kind':'fact','value':'My favourite colour is blue'},set(),context=context)
+    assert saved['data']['text']=='My favourite colour is blue'
+    assert [m['text'] for m in memory.listing(context.scopes)]==['My favourite colour is blue']
+    with pytest.raises(ValueError):tools.invoke('memory.remember',{'kind':'fact','value':'My phone number is 9876543210'},set(),context=context)
+    with pytest.raises(ValueError):tools.invoke('memory.remember',{'kind':'language','value':'blue'},set(),context=context)

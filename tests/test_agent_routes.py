@@ -57,3 +57,15 @@ def test_task_stream_pushes_reply_and_closes_when_turn_finishes(monkeypatch):
         body=client.get('/api/assistant/tasks/'+id+'/stream').text
     frames=[json.loads(line[6:]) for line in body.splitlines() if line.startswith('data: ')]
     assert frames[-1]['state']=='completed' and frames[-1]['reply'].endswith('Right away, sir.')
+
+
+def test_overlay_reports_latest_spoken_reply_to_the_tray():
+    with TestClient(app) as client:
+        assert client.get('/api/assistant/overlay').status_code==401
+        client.post('/api/session',json={'token':'test-token'});headers={'X-Ninja-Token':'test-token'}
+        first=client.get('/api/assistant/overlay',headers=headers).json()
+        assert client.post('/api/assistant/overlay',headers=headers,json={'state':'speaking','text':'Yes, sir.'}).status_code==200
+        latest=client.get('/api/assistant/overlay',headers=headers).json()
+        assert latest['state']=='speaking' and latest['text']=='Yes, sir.' and latest['seq']==first['seq']+1
+        assert client.post('/api/assistant/overlay',headers=headers,json={'state':'dancing','text':''}).status_code==422
+        assert client.post('/api/assistant/overlay',headers=headers,json={'state':'idle','text':'x'*601}).status_code==422

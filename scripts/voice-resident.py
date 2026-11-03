@@ -1,4 +1,4 @@
-"""Pipe-only adapter reusing the installed ClipX CLI with one cached CPU model."""
+"""Pipe-only adapter around a speech CLI (ClipX's, or Ninja's scripts/speech-transcribe.py) with one cached model."""
 import importlib.util,json,os,queue,re,sys,threading,time,wave
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -54,7 +54,7 @@ def serve(script,model,folder):
             if len(encoded)>256000:raise ValueError('Speech response is too large')
         except Exception:
             # No transcript or library exception text goes into logs or error replies.
-            encoded=json.dumps({'id':request.get('id') if isinstance(request,dict) else None,'error':'ClipX speech recognition failed. Retry or check Caption Tool and the cached model in Settings.'})
+            encoded=json.dumps({'id':request.get('id') if isinstance(request,dict) else None,'error':'Speech recognition failed. Retry, or run voice setup again from Settings.'})
         finally:audio.unlink(missing_ok=True)
         sys.__stdout__.write(encoded+'\n');sys.__stdout__.flush()
 

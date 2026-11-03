@@ -161,3 +161,26 @@ def test_concurrent_startup_migrates_existing_jobs_once():
     with ThreadPoolExecutor(max_workers=3) as pool:list(pool.map(lambda _:db.init(),range(3)))
     with db.connect() as c:
         assert len([r for r in c.execute('PRAGMA table_info(jobs)') if r[1]=='available'])==1
+
+
+def test_full_gpu_frees_the_speech_model_before_a_turn(monkeypatch):
+    from ninja import adapters,voice
+    freed=[];monkeypatch.setattr(voice,'shutdown',lambda:freed.append(1))
+    monkeypatch.setattr(adapters,'gpu',lambda:{'memory_total':8*2**30,'memory_used':8*2**30-100*2**20})
+    assert adapters.make_room() is True and freed==[1]
+    monkeypatch.setattr(adapters,'gpu',lambda:{'memory_total':8*2**30,'memory_used':6*2**30})
+    assert adapters.make_room() is False and freed==[1]
+    monkeypatch.setattr(adapters,'gpu',lambda:None)
+    assert adapters.make_room() is False
+
+
+def test_tool_schemas_keep_meaning_and_drop_validator_noise():
+    import json
+    from ninja import tools,assistant_tools  # noqa: F401
+    find=agent.tool_schema(tools.REGISTRY['file.find'])['function']['parameters']
+    assert find['required']==['query'] and find['properties']['kind']['enum'][:2]==['any','video'] and 'description' in find['properties']['query']
+    assert 'title' not in json.dumps(find) and 'maxLength' not in json.dumps(find) and 'additionalProperties' not in find
+    remind=agent.tool_schema(tools.REGISTRY['assistant.remind'])['function']['parameters']['properties']['in_minutes']
+    assert remind['type']=='number' and 'anyOf' not in remind and remind['default'] is None
+    total=sum(len(json.dumps(agent.tool_schema(t))) for t in tools.REGISTRY.values())
+    assert total<14500,total   # was 19318 before lean_schema and the shorter descriptions

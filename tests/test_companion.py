@@ -377,3 +377,33 @@ def test_fetch_of_an_invented_url_becomes_a_search():
     assert made_up.name=='research.search' and made_up.arguments=={'query':'tell me something about cyber security'}
     assert agent.grounded(fetch('https://example.org/a'),['read https://example.org/a']).name=='research.fetch'
     assert agent.grounded(fetch('https://docs.python.org/3/'),['what is new in python'],['{"url":"https://docs.python.org/3/whatsnew"}']).name=='research.fetch'
+
+
+def test_old_tool_results_are_trimmed_but_the_last_turns_stay_whole():
+    big='{"sources":['+('{"title":"x","excerpt":"'+'a'*200+'"},')*20+']}'
+    messages=[{'role':'user','content':'research mics'},{'role':'assistant','content':'','tool_calls':[{'function':{'name':'research.deep','arguments':{}}}]},
+              {'role':'tool','tool_name':'research.deep','content':big},{'role':'assistant','content':'Three good mics, sir [1].'},
+              {'role':'user','content':'and headphones?'},{'role':'assistant','content':'','tool_calls':[{'function':{'name':'research.deep','arguments':{}}}]},
+              {'role':'tool','tool_name':'research.deep','content':big},{'role':'assistant','content':'Two headphones, sir [1].'},
+              {'role':'user','content':'open the first one'}]
+    kept=[m['content'] for m in agent.safe_history(messages,companion=True) if m['role']=='tool']
+    assert len(kept)==2 and kept[1]==big and len(kept[0])<700 and kept[0].endswith('[older result trimmed]')
+
+
+def test_malformed_tool_call_without_a_path_is_retried_once_with_some_temperature(monkeypatch):
+    import httpx
+    sent=[]
+    def handler(request):
+        body=json.loads(request.content);sent.append(body['options']['temperature'])
+        if len(sent)==1:return httpx.Response(500,json={'error':'XML syntax error on line 4: unexpected end element </parameter>'})
+        return httpx.Response(200,json={'done':True,'message':{'content':'','tool_calls':[{'function':{'name':'file.open','arguments':{'path':'Downloads'}}}]}})
+    real=httpx.Client
+    monkeypatch.setattr(httpx,'Client',lambda *a,**kw:real(transport=httpx.MockTransport(handler)))
+    monkeypatch.setattr(adapters,'local_model',lambda:'qwen3.5:9b')
+    turn=adapters.agent_turn([{'role':'user','content':'Open my Downloads folder'}],[],job=db.queue('p','agent_turn',{}))
+    assert sent==[0,0.3] and turn.calls[0].name=='file.open'
+    always=[]
+    monkeypatch.setattr(httpx,'Client',lambda *a,**kw:real(transport=httpx.MockTransport(lambda r:(always.append(1),httpx.Response(500,json={'error':'XML syntax error'}))[1])))
+    with pytest.raises(ValueError,match='Local model request failed'):
+        adapters.agent_turn([{'role':'user','content':'Open my Downloads folder'}],[],job=db.queue('p2','agent_turn',{}))
+    assert len(always)==2
