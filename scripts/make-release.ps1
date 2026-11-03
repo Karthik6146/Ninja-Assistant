@@ -16,7 +16,7 @@ $stage = Join-Path $out "stage\Ninja"
 if (Test-Path (Join-Path $out 'stage')) { Remove-Item (Join-Path $out 'stage') -Recurse -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
 
-$files = git ls-files -co --exclude-standard | Where-Object { $_ -notmatch '^(tests/|pytest\.ini$)' }
+$files = git ls-files -co --exclude-standard | Where-Object { $_ -notmatch '^(tests/|site/|\.github/|pytest\.ini$)' }
 $files += Get-ChildItem frontend/dist -Recurse -File | ForEach-Object { $_.FullName.Substring($ninjaRoot.Length + 1).Replace('\', '/') }
 foreach ($file in $files) {
     $target = Join-Path $stage $file

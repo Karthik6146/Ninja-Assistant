@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ninja: your own Jarvis, on your PC</title>
+<meta name="description" content="Ninja is a free, open-source voice assistant for Windows that runs entirely on your PC. Talk in English, Hindi or Hinglish. One-click setup picks the right AI model for your hardware.">
+<meta property="og:title" content="Ninja: your own Jarvis, on your PC">
+<meta property="og:description" content="A private voice assistant that runs 100% on your Windows PC. Free and open source.">
+<meta name="theme-color" content="#0b0b0c">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+:root{
+ --bg:#0b0b0c;--surface:#131315;--surface-2:#1a1a1d;--line:#232326;--line-2:#303035;
+ --text:#f4f4f5;--muted:#a1a1aa;--faint:#8b8b94;--brand:#3ccff2;--brand-soft:#3ccff21a;--brand-line:#3ccff24d;
+ --ok:#4ade80;--gold:#e0b25a;--ease:cubic-bezier(.22,1,.36,1);
+ /* Windows' own type, as in the app; no web fonts to load. Other systems use their UI font. */
+ --sans:"Segoe UI Variable Display","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;--mono:"Cascadia Code","Cascadia Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img,svg{display:block}
+::selection{background:#3ccff240}
+.wrap{width:min(1160px,100% - 32px);margin-inline:auto}
+.mono{font-family:var(--mono)}
+
+/* Nav */
+.nav{position:fixed;inset:0 0 auto;z-index:50;transition:background .3s,border-color .3s,backdrop-filter .3s;border-bottom:1px solid transparent}
+.nav.scrolled{background:#0b0b0ccc;backdrop-filter:blur(14px);border-color:var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:28px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em}
+.brand svg{width:28px;height:28px}
+.nav ul{display:flex;gap:24px;list-style:none;margin:0 auto 0 12px;padding:0;font-size:14px;color:var(--muted)}
+.nav ul a:hover{color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;font-size:14px;font-weight:500;border:1px solid var(--line-2);background:var(--surface);transition:transform .2s var(--ease),background .2s,border-color .2s}
+.btn:hover{transform:translateY(-1px);border-color:#45454b}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn.primary{background:var(--text);color:#0b0b0c;border-color:var(--text)}
+.btn.primary:hover{background:#fff}
+.btn svg{width:18px;height:18px}
+.nav .btn{height:36px;padding:0 14px;margin-left:auto}
+
+/* Hero */
+.hero{position:relative;padding:150px 0 90px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-20% -10% auto;height:900px;background:radial-gradient(ellipse 55% 45% at 72% 38%,#3ccff214,transparent 70%);pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.05fr 1fr;gap:56px;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 6px;border:1px solid var(--line-2);border-radius:999px;font-size:13px;color:var(--muted);background:var(--surface)}
+.pill b{font-weight:500;color:var(--bg);background:var(--brand);border-radius:999px;padding:1px 8px;font-size:12px}
+h1{font-size:clamp(42px,6.2vw,76px);line-height:1;letter-spacing:-.045em;font-weight:600;margin:22px 0 22px}
+h1 em{font-style:normal;color:var(--brand)}
+.lead{font-size:clamp(17px,1.6vw,19px);color:var(--muted);max-width:540px;margin:0 0 32px}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.meta{margin-top:18px;font-size:13px;color:var(--faint);display:flex;flex-wrap:wrap;gap:6px 16px}
+.meta span{display:inline-flex;align-items:center;gap:6px}
+.meta span::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ok)}
+
+/* Product window */
+.window{position:relative;border:1px solid var(--line-2);border-radius:16px;background:linear-gradient(#141416,#101012);box-shadow:0 40px 80px -30px #000,0 0 0 1px #ffffff05 inset;overflow:hidden}
+.window-bar{display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--faint)}
+.window-bar i{width:10px;height:10px;border-radius:50%;background:#2a2a2e}
+.window-bar span{margin-left:10px}
+.chat{height:360px;padding:20px 20px 10px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.msg{max-width:85%;opacity:0;transform:translateY(8px);transition:opacity .45s var(--ease),transform .45s var(--ease)}
+.msg.in{opacity:1;transform:none}
+.msg.user{align-self:flex-end;background:var(--surface-2);border:1px solid var(--line);padding:9px 14px;border-radius:14px 14px 4px 14px;font-size:14px}
+.msg.jarvis{display:flex;gap:10px;font-size:14px;color:#e4e4e7}
+.msg.jarvis .av{flex:none;width:26px;height:26px;color:var(--brand)}
+.receipt{display:inline-flex;align-items:center;gap:6px;margin:0 0 6px;padding:2px 9px;border-radius:999px;border:1px solid #4ade8040;color:var(--ok);font-size:12px;font-family:var(--mono)}
+.caret{display:inline-block;width:7px;height:15px;background:var(--brand);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.composer{display:flex;align-items:center;gap:10px;margin:0 14px 14px;padding:10px 10px 10px 14px;border:1px solid var(--line-2);border-radius:12px;color:var(--faint);font-size:13px}
+.composer .chip{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.composer .chip::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.composer .gpu{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--faint)}
+.mic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--brand-line);background:var(--brand-soft);color:var(--brand)}
+.bars{display:flex;align-items:center;gap:3px;height:16px}
+.bars i{width:3px;height:100%;border-radius:2px;background:var(--brand);animation:wave 1.1s var(--ease) infinite;transform-origin:center}
+.bars i:nth-child(2){animation-delay:.15s}.bars i:nth-child(3){animation-delay:.3s}.bars i:nth-child(4){animation-delay:.45s}
+@keyframes wave{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+
+/* Reactor */
+.reactor{position:absolute;right:-70px;top:-80px;width:230px;height:230px;opacity:.9;pointer-events:none}
+.reactor .spin{transform-origin:50% 50%;animation:spin 24s linear infinite}
+.reactor .spin.r{animation-duration:16s;animation-direction:reverse}
+.reactor .core{transform-origin:50% 50%;animation:pulse 3.2s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{opacity:.55;transform:scale(.92)}}
+
+/* Marquee */
+.marquee{border-block:1px solid var(--line);padding:18px 0;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.track{display:flex;gap:14px;width:max-content;animation:slide 60s linear infinite}
+.marquee:hover .track{animation-play-state:paused}
+.track span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;color:var(--muted);background:var(--surface)}
+.track span svg{width:14px;height:14px;color:var(--brand)}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+/* Sections */
+section{padding:110px 0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--brand);margin:0 0 14px}
+h2{font-size:clamp(32px,4.2vw,52px);line-height:1.05;letter-spacing:-.035em;font-weight:600;margin:0 0 18px;max-width:780px}
+.sub{color:var(--muted);font-size:18px;max-width:620px;margin:0}
+.head{margin-bottom:56px}
+
+/* Feature grid */
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.feature{position:relative;background:var(--bg);padding:30px 28px 32px;transition:background .3s}
+.feature:hover{background:var(--surface)}
+/* Icon in line with the heading, no tile: the icon turns cyan on hover. */
+.feature{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-content:start}
+.feature .ic{color:var(--faint);padding-top:2px;transition:color .3s,transform .4s var(--ease)}
+.feature:hover .ic{color:var(--brand);transform:scale(1.08)}
+.feature .ic svg{width:20px;height:20px}
+.feature h3{margin:0 0 10px;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.feature p,.feature .ex{grid-column:1/-1}
+.feature p{margin:0;color:var(--muted);font-size:15px}
+.feature .ex{margin-top:16px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+.feature .ex b{color:var(--text);font-weight:500}
+
+/* Privacy pipeline */
+.private{display:grid;grid-template-columns:1fr 1.15fr;gap:60px;align-items:center}
+.pc{position:relative;border:1px dashed var(--brand-line);border-radius:18px;padding:34px 26px 26px;background:#3ccff205}
+.pc>label{position:absolute;top:-11px;left:22px;padding:0 10px;background:var(--bg);font-family:var(--mono);font-size:12px;color:var(--brand)}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;position:relative}
+.node{position:relative;z-index:1;border:1px solid var(--line-2);border-radius:12px;background:var(--surface);padding:14px 12px;text-align:center}
+.node svg{width:22px;height:22px;margin:0 auto 8px;color:var(--brand)}
+.node b{display:block;font-size:13px;font-weight:600}
+.node small{display:block;font-size:12px;color:var(--faint);font-family:var(--mono)}
+.wire{position:absolute;left:8%;right:8%;top:50%;height:2px;background:var(--line-2);overflow:hidden}
+.wire::after{content:"";position:absolute;inset:0;width:30%;background:linear-gradient(90deg,transparent,var(--brand),transparent);animation:flow 2.4s linear infinite}
+@keyframes flow{from{transform:translateX(-100%)}to{transform:translateX(340%)}}
+.cloud{margin-top:22px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
+.cloud svg{width:34px;height:34px;color:var(--faint);flex:none}
+.checks{list-style:none;padding:0;margin:28px 0 0;display:grid;gap:12px}
+.checks li{display:flex;gap:12px;color:var(--muted);font-size:15px}
+.checks li svg{flex:none;width:20px;height:20px;color:var(--ok);margin-top:2px}
+.checks b{color:var(--text);font-weight:500}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.stat{border:1px solid var(--line);border-radius:16px;padding:24px;background:var(--surface)}
+.stat strong{display:block;font-size:clamp(34px,4vw,46px);font-weight:600;letter-spacing:-.04em;line-height:1;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.stat strong small{font-size:max(.45em,15px);color:var(--muted);font-weight:500;letter-spacing:0;margin-left:4px}
+.stat span{color:var(--muted);font-size:14px}
+.perf{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-top:16px}
+.panel{border:1px solid var(--line);border-radius:16px;padding:26px;background:var(--surface)}
+.panel h3{margin:0 0 4px;font-size:16px;font-weight:600}
+.panel>p{margin:0 0 22px;color:var(--faint);font-size:13px}
+.barrow{display:grid;grid-template-columns:130px 1fr 54px;gap:14px;align-items:center;margin-bottom:14px;font-size:14px}
+.barrow .name{color:var(--muted);font-family:var(--mono);font-size:12px}
+.barrow .track2{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.barrow .fill{display:block;height:100%;width:0;border-radius:5px;background:var(--line-2);transition:width 1.4s var(--ease)}
+.barrow.best .fill{background:linear-gradient(90deg,#3ccff299,var(--brand))}
+.barrow .val{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
+.latency{display:grid;gap:14px}
+.lat{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:14px}
+.lat .track2{grid-column:1/-1;height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.lat .fill{display:block;height:100%;width:0;background:var(--line-2);border-radius:4px;transition:width 1.4s var(--ease)}
+.lat.now .fill{background:var(--brand)}
+.lat span{color:var(--muted)}.lat b{font-family:var(--mono);font-weight:500;font-size:13px}
+.note{margin-top:18px;font-size:12px;color:var(--faint)}
+
+/* Setup */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+.step{position:relative;border:1px solid var(--line);border-radius:18px;padding:28px;background:var(--surface);overflow:hidden}
+.step .n{font-family:var(--mono);font-size:12px;color:var(--brand);margin-bottom:46px;display:flex;align-items:center;gap:10px}
+.step .n::after{content:"";flex:1;height:1px;background:var(--line)}
+.step h3{margin:0 0 8px;font-size:20px;font-weight:600;letter-spacing:-.02em}
+.step p{margin:0;color:var(--muted);font-size:15px}
+.step .big{position:absolute;right:20px;top:20px;width:48px;height:48px;color:var(--line-2);transition:color .4s,transform .5s var(--ease)}
+.step:hover .big{color:var(--brand);transform:rotate(-6deg) scale(1.06)}
+.wizard{margin-top:16px;border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:26px;display:grid;grid-template-columns:1fr 1.4fr;gap:30px;align-items:center}
+.wizard h3{margin:0 0 8px;font-size:20px;letter-spacing:-.02em}
+.wizard p{margin:0;color:var(--muted);font-size:15px}
+.models{display:grid;gap:8px}
+.model{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px;transition:border-color .3s}
+.model.pick{border-color:var(--text)}
+.model code{font-family:var(--mono);font-size:13px}
+.model small{color:var(--faint);font-size:12px}
+.tag{font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--line-2);color:var(--muted);white-space:nowrap}
+.tag.fast{border-color:#4ade8055;color:var(--ok)}.tag.slow{border-color:#e0b25a55;color:var(--gold)}.tag.rec{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand)}
+
+/* Hardware table */
+.hw{width:100%;border-collapse:collapse;margin-top:16px;font-size:15px;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.hw th,.hw td{text-align:left;padding:15px 20px;border-bottom:1px solid var(--line)}
+.hw th{font-weight:500;color:var(--faint);font-size:13px;background:var(--surface)}
+.hw tr:last-child td{border-bottom:0}
+.hw td:first-child{color:var(--text)}.hw td{color:var(--muted)}
+.hw code{font-family:var(--mono);color:var(--text);font-size:13px}
+
+/* FAQ */
+.faq{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+details{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:0 22px;transition:border-color .3s}
+details[open]{border-color:var(--line-2)}
+summary{list-style:none;cursor:pointer;padding:18px 0;font-weight:500;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--mono);color:var(--faint);transition:transform .3s var(--ease)}
+details[open] summary::after{transform:rotate(45deg)}
+details p{margin:0 0 18px;color:var(--muted);font-size:15px}
+
+/* CTA */
+.final{text-align:center;position:relative;overflow:hidden}
+.final .orb{width:120px;height:120px;margin:0 auto 34px;color:var(--brand)}
+.final h2{margin-inline:auto}
+.final .sub{margin:0 auto 34px}
+.final .cta{justify-content:center}
+footer{border-top:1px solid var(--line);padding:34px 0 50px;color:var(--faint);font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 30px;justify-content:space-between}
+footer a:hover{color:var(--text)}
+
+/* Reveal */
+[data-reveal]{opacity:0;transform:translateY(22px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+[data-reveal].shown{opacity:1;transform:none}
+[data-delay="1"]{transition-delay:.08s}[data-delay="2"]{transition-delay:.16s}[data-delay="3"]{transition-delay:.24s}
+
+@media (max-width:960px){
+ .hero .wrap,.private,.perf,.wizard{grid-template-columns:1fr}
+ .features,.steps{grid-template-columns:1fr 1fr}
+ .stats{grid-template-columns:1fr 1fr}
+ .nav ul{display:none}
+ .reactor{display:none}
+}
+@media (max-width:620px){
+ .features,.steps,.faq,.stats{grid-template-columns:1fr}
+ .hero{padding-top:120px}
+ section{padding:80px 0}
+ .flow{grid-template-columns:1fr 1fr}.wire{display:none}
+ .barrow{grid-template-columns:96px 1fr 44px}
+ .hw th:nth-child(3),.hw td:nth-child(3){display:none}
+ .composer .gpu{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important}
+ [data-reveal]{opacity:1;transform:none}
+ html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="mark" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="8.75"/><path d="M12 6.4V5M16.85 14.8l1.2.7M7.15 14.8l-1.2.7"/></g><circle cx="12" cy="12" r="3" fill="currentColor"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></g></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 13.5h6L10 21l8-10.5h-6z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.8 3.9 5.8 3.9 9s-1.3 6.2-3.9 9c-2.6-2.8-3.9-5.8-3.9-9S9.4 5.8 12 3z"/></g></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></g></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></g></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"><path d="M12 3 4.5 6v6c0 4.4 3.1 7.8 7.5 9 4.4-1.2 7.5-4.6 7.5-9V6z"/><path d="m8.8 12 2.2 2.2 4.4-4.4" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></g></symbol>
+  <symbol id="i-tray" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 15h5l1.5 2h5L16 15h5"/></g></symbol>
+  <symbol id="i-lang" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h8M8 3v2M5.5 5c.8 3.5 3.2 6 6.5 7.5M10.5 5c-.8 3.6-3.2 6.4-6.5 8"/><path d="m13 21 4-9 4 9M14.5 18h5"/></g></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.4 1.1 2.9.8.1-.7.4-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9v2.8c0 .3.2.6.7.5A10 10 0 0 0 12 2.2z"/></symbol>
+  <symbol id="i-cloud-off" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10.5a4 4 0 0 0 .7-7.9A6 6 0 0 0 6.6 9.2 4.5 4.5 0 0 0 7 18z"/><path d="M4 4l16 16"/></g></symbol>
+  <symbol id="i-cpu-wave" viewBox="0 0 24 24"><path d="M3 12h3l2.5-6 4 12 2.5-6H21" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></g></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M10 3v2M10 7v2M10 11v2M9 15h2v3H9z"/></g></symbol>
+  <symbol id="i-click" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m9 9 11 4-4.5 1.5L14 19z"/><path d="M5 3.5 6 6M3 8l2.5.5M10 3l-.5 2.5"/></g></symbol>
+  <symbol id="i-wand" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 20 11-11M13 7l2-2 4 4-2 2"/><path d="M19 3v2M20 4h-2M6 4v2M7 5H5M19 14v2M20 15h-2"/></g></symbol>
+ </defs>
+</svg>
+
+<nav class="nav" id="nav">
+ <div class="wrap">
+  <a class="brand" href="#top" aria-label="Ninja home"><svg style="color:var(--brand)"><use href="#mark"/></svg>Ninja</a>
+  <ul>
+   <li><a href="#features">Features</a></li>
+   <li><a href="#private">Privacy</a></li>
+   <li><a href="#performance">Performance</a></li>
+   <li><a href="#setup">Setup</a></li>
+   <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <a class="btn" href="https://github.com/Karthik6146/Ninja-Assistant" target="_blank" rel="noopener"><svg><use href="#i-gh"/></svg>GitHub</a>
+ </div>
+</nav>
+
+<header class="hero" id="top">
+ <div class="wrap">
+  <div>
+   <span class="pill" data-reveal><b>Free</b>Open source · v0.1.0 for Windows</span>
+   <h1 data-reveal data-delay="1">Your own Jarvis.<br>On <em>your</em> PC.</h1>
+   <p class="lead" data-reveal data-delay="2">Ninja is a voice assistant that runs entirely on your computer. Talk in English, Hindi or Hinglish: it opens apps, finds files, researches the web, reads your mail and reminds you. Nothing you say leaves your machine.</p>
+   <div class="cta" data-reveal data-delay="3">
+    <a class="btn primary" href="https://github.com/Karthik6146/Ninja-Assistant/releases/latest"><svg><use href="#i-down"/></svg>Download for Windows</a>
+    <a class="btn" href="#setup">How setup works</a>
+   </div>
+   <div class="meta" data-reveal data-delay="3"><span>No account</span><span>No subscription</span><span>Sets itself up</span></div>
+  </div>
+
+  <div data-reveal data-delay="2" style="position:relative">
+   <svg class="reactor" viewBox="0 0 200 200" aria-hidden="true">
+    <g class="spin" fill="none" stroke="#3ccff2" stroke-opacity=".35"><circle cx="100" cy="100" r="92" stroke-dasharray="2 8"/></g>
+    <g class="spin r" fill="none" stroke="#3ccff2" stroke-opacity=".5" stroke-width="2"><circle cx="100" cy="100" r="74" stroke-dasharray="60 20 10 20"/></g>
+    <circle cx="100" cy="100" r="54" fill="none" stroke="#3ccff2" stroke-opacity=".8" stroke-width="3"/>
+    <circle class="core" cx="100" cy="100" r="22" fill="#3ccff2" fill-opacity=".9"/>
+   </svg>
+   <div class="window" role="img" aria-label="Ninja's chat window: Jarvis answering requests in English and Hinglish">
+    <div class="window-bar"><i></i><i></i><i></i><span>Ninja · Jarvis</span></div>
+    <div class="chat" id="chat"></div>
+    <div class="composer">
+     <span class="mic"><svg width="15" height="15"><use href="#i-mic"/></svg></span>
+     <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+     <span>Listening for "Hey Jarvis"…</span>
+     <span class="gpu">GPU 54°C │ 66 tok/s</span>
+    </div>
+   </div>
+  </div>
+ </div>
+</header>
+
+<div class="marquee" aria-label="Things you can say to Jarvis">
+ <div class="track" id="track"></div>
+</div>
+
+<section id="features">
+ <div class="wrap">
+  <div class="head">
+   <p class="eyebrow" data-reveal>What it does</p>
+   <h2 data-reveal data-delay="1">An assistant that does things, not just talks.</h2>
+   <p class="sub" data-reveal data-delay="2">Jarvis is a calm British butler with a dry wit. Ask in any mix of languages and he picks the right tool, runs it, and shows you the receipt.</p>
+  </div>
+  <div class="features">
+   <article class="feature" data-reveal><div class="ic"><svg><use href="#i-mic"/></svg></div><h3>Voice first</h3><p>Say "Hey Jarvis" from across the room. Speak naturally, interrupt him mid-sentence, and hear him answer in a natural voice.</p><p class="ex">"Hey Jarvis, <b>next song</b>"</p></article>
+   <article class="feature" data-reveal data-delay="1"><div class="ic"><svg><use href="#i-lang"/></svg></div><h3>English, Hindi, Hinglish</h3><p>Mix languages in one sentence the way you actually talk. He replies in the language you choose and switches when you ask.</p><p class="ex">"<b>Noida ka mausam</b> kaisa hai?"</p></article>
+   <article class="feature" data-reveal data-delay="2"><div class="ic"><svg><use href="#i-bolt"/></svg></div><h3>Controls your PC</h3><p>Opens any app or Settings page, changes the volume, plays, pauses and skips media, checks CPU and memory.</p><p class="ex">"<b>VLC kholo</b>, volume badhao"</p></article>
+   <article class="feature" data-reveal><div class="ic"><svg><use href="#i-globe"/></svg></div><h3>Researches with sources</h3><p>Searches the web, reads up to three pages and answers with the links, so you can check what he says.</p><p class="ex">"Best microphones <b>under ₹5000</b>"</p></article>
+   <article class="feature" data-reveal data-delay="1"><div class="ic"><svg><use href="#i-folder"/></svg></div><h3>Finds your files</h3><p>Looks through Desktop, Documents, Downloads, Videos, Pictures and Music, and opens the one you meant.</p><p class="ex">"Find my <b>Valorant clip</b>"</p></article>
+   <article class="feature" data-reveal data-delay="2"><div class="ic"><svg><use href="#i-mail"/></svg></div><h3>Gmail and WhatsApp</h3><p>Reads your new emails and WhatsApp Desktop notifications aloud. Read-only: he never sends anything for you.</p><p class="ex">"Koi <b>WhatsApp message</b> aaya?"</p></article>
+   <article class="feature" data-reveal><div class="ic"><svg><use href="#i-bell"/></svg></div><h3>Reminders and memory</h3><p>Sets reminders, keeps a Today list and remembers your preferences between conversations.</p><p class="ex">"Remind me <b>tomorrow at 7 PM</b>"</p></article>
+   <article class="feature" data-reveal data-delay="1"><div class="ic"><svg><use href="#i-shield"/></svg></div><h3>Asks before risky actions</h3><p>Anything risky waits for your Allow once or Deny. After reading web pages or email, every action needs your click, so strangers' text can't steer him.</p><p class="ex"><b>Allow once</b> · Deny</p></article>
+   <article class="feature" data-reveal data-delay="2"><div class="ic"><svg><use href="#i-chip"/></svg></div><h3>Lives in your tray</h3><p>Runs quietly in the notification area. See GPU temperature, VRAM and speed at a glance, free GPU memory for a game, or start with Windows.</p><p class="ex">GPU 54°C │ 8% │ <b>5.6/8 GB</b></p></article>
+  </div>
+ </div>
+</section>
+
+<section id="private" style="background:linear-gradient(transparent,#3ccff205 50%,transparent)">
+ <div class="wrap private">
+  <div>
+   <p class="eyebrow" data-reveal>Private by design</p>
+   <h2 data-reveal data-delay="1">Everything happens inside your PC.</h2>
+   <p class="sub" data-reveal data-delay="2">Speech recognition, the language model and the voice all run on your own hardware. There is no Ninja server, no account and nothing to log in to.</p>
+   <ul class="checks" data-reveal data-delay="3">
+    <li><svg><use href="#i-check"/></svg><span><b>Works offline</b> for chat and PC control. The internet is used only for web research, weather and downloads.</span></li>
+    <li><svg><use href="#i-check"/></svg><span><b>Your history stays on disk</b>, in a local database in the Ninja folder.</span></li>
+    <li><svg><use href="#i-check"/></svg><span><b>Cloud AI is off.</b> You can add your own API key later; each run asks before sharing.</span></li>
+   </ul>
+  </div>
+  <div class="pc" data-reveal data-delay="2">
+   <label>your PC</label>
+   <div class="flow">
+    <div class="wire"></div>
+    <div class="node"><svg><use href="#i-mic"/></svg><b>You speak</b><small>wake word</small></div>
+    <div class="node"><svg><use href="#i-cpu-wave"/></svg><b>Whisper</b><small>speech to text</small></div>
+    <div class="node"><svg><use href="#mark"/></svg><b>Qwen 3.5</b><small>thinks · tools</small></div>
+    <div class="node"><svg><use href="#i-speaker"/></svg><b>Kokoro</b><small>speaks back</small></div>
+   </div>
+   <div class="cloud"><svg><use href="#i-cloud-off"/></svg><span>No audio, text or files are sent to a cloud AI. The models are open and downloaded once, during setup.</span></div>
+  </div>
+ </div>
+</section>
+
+<section id="performance">
+ <div class="wrap">
+  <div class="head">
+   <p class="eyebrow" data-reveal>Performance</p>
+   <h2 data-reveal data-delay="1">Fast enough to feel like a conversation.</h2>
+   <p class="sub" data-reveal data-delay="2">Measured with the project's own test scripts on a mid-range gaming PC (RTX 4060, 8 GB).</p>
+  </div>
+  <div class="stats">
+   <div class="stat" data-reveal><strong><span data-count="52">0</span><small>/52</small></strong><span>voice requests sent to the right tool, in English, Hindi and Hinglish</span></div>
+   <div class="stat" data-reveal data-delay="1"><strong>~<span data-count="2.5" data-dec="1">0</span><small>s</small></strong><span>from the end of your sentence to Jarvis speaking (median)</span></div>
+   <div class="stat" data-reveal data-delay="2"><strong><span data-count="38">0</span><small>tok/s</small></strong><span>writing speed of the 9B model; the 4B model reaches about 66</span></div>
+   <div class="stat" data-reveal data-delay="3"><strong><span data-count="5.5" data-dec="1">0</span><small>GB</small></strong><span>of VRAM for the language model, so an 8 GB card has room to spare</span></div>
+  </div>
+  <div class="perf">
+   <div class="panel" data-reveal>
+    <h3>Picks the right action</h3>
+    <p>Tool-choice accuracy on 52 real requests, spoken</p>
+    <div class="barrow best"><span class="name">qwen3.5 9B</span><span class="track2"><span class="fill" data-w="100"></span></span><span class="val">100%</span></div>
+    <div class="barrow"><span class="name">qwen3 8B</span><span class="track2"><span class="fill" data-w="98"></span></span><span class="val">98%</span></div>
+    <div class="barrow"><span class="name">qwen3 4B</span><span class="track2"><span class="fill" data-w="38"></span></span><span class="val">38%</span></div>
+    <div class="barrow"><span class="name">gemma4 e4b</span><span class="track2"><span class="fill" data-w="35"></span></span><span class="val">35%</span></div>
+   </div>
+   <div class="panel" data-reveal data-delay="1">
+    <h3>Voice reply time</h3>
+    <p>End of speech to first word, as the project got faster</p>
+    <div class="latency">
+     <div class="lat"><span>First version</span><b>4.8–6 s</b><span class="track2"><span class="fill" data-w="100"></span></span></div>
+     <div class="lat"><span>Streaming speech</span><b>~3.5 s</b><span class="track2"><span class="fill" data-w="60"></span></span></div>
+     <div class="lat now"><span>Today: live turn detection</span><b>~2.5 s</b><span class="track2"><span class="fill" data-w="42"></span></span></div>
+    </div>
+    <p class="note">Median of simulated voice turns on the development PC. Your times depend on your hardware.</p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="setup">
+ <div class="wrap">
+  <div class="head">
+   <p class="eyebrow" data-reveal>Setup in minutes</p>
+   <h2 data-reveal data-delay="1">No terminal. No config files. No coding.</h2>
+   <p class="sub" data-reveal data-delay="2">If you can unzip a folder, you can run your own AI assistant. Ninja checks your PC and installs everything it needs.</p>
+  </div>
+  <div class="steps">
+   <div class="step" data-reveal><svg class="big"><use href="#i-zip"/></svg><div class="n">01</div><h3>Download and unzip</h3><p>Get the 0.7 MB zip from GitHub and unzip it anywhere, like your Documents folder.</p></div>
+   <div class="step" data-reveal data-delay="1"><svg class="big"><use href="#i-click"/></svg><div class="n">02</div><h3>Double-click Install Ninja</h3><p>It installs Python if you need it, sets everything up and puts a Ninja shortcut on your desktop.</p></div>
+   <div class="step" data-reveal data-delay="2"><svg class="big"><use href="#i-wand"/></svg><div class="n">03</div><h3>Let the wizard pick</h3><p>Ninja reads your memory, graphics card and disk, then downloads the best model your PC can run.</p></div>
+  </div>
+  <div class="wizard" data-reveal>
+   <div>
+    <h3>It knows what your PC can handle.</h3>
+    <p>The setup wizard rates every model Fast, Slow or Too big for your hardware and recommends the largest one that runs fast. One click downloads it, with a progress bar, and Jarvis is ready.</p>
+   </div>
+   <div class="models" id="models">
+    <div class="model"><code>qwen3.5:2b</code><small>2.7 GB</small><span class="tag fast">Fast</span></div>
+    <div class="model"><code>qwen3.5:4b</code><small>3.3 GB</small><span class="tag fast">Fast</span></div>
+    <div class="model pick"><code>qwen3.5:9b</code><small>6.6 GB</small><span class="tag rec">Recommended</span></div>
+    <div class="model"><code>qwen3.5:27b</code><small>17 GB</small><span class="tag slow">Slow</span></div>
+   </div>
+  </div>
+  <table class="hw" data-reveal>
+   <thead><tr><th>Your PC</th><th>Model the wizard picks</th><th>What to expect</th></tr></thead>
+   <tbody>
+    <tr><td>NVIDIA GPU, 8 GB or more</td><td><code>qwen3.5:9b</code></td><td>The best experience; what Ninja is tuned on</td></tr>
+    <tr><td>NVIDIA GPU, 6 GB</td><td><code>qwen3.5:4b</code></td><td>Quick replies and good tool use</td></tr>
+    <tr><td>No dedicated GPU, 16 GB RAM</td><td><code>qwen3.5:4b</code></td><td>Works on the CPU; replies take longer</td></tr>
+    <tr><td>No dedicated GPU, 8 GB RAM</td><td><code>qwen3.5:2b</code></td><td>Basic chats and simple commands</td></tr>
+   </tbody>
+  </table>
+ </div>
+</section>
+
+<section id="faq">
+ <div class="wrap">
+  <div class="head">
+   <p class="eyebrow" data-reveal>Questions</p>
+   <h2 data-reveal data-delay="1">Good to know.</h2>
+  </div>
+  <div class="faq" data-reveal>
+   <details><summary>Is it really free?</summary><p>Yes. Ninja is open source under the MIT license, and the AI models it downloads are free too. There is no subscription and no account.</p></details>
+   <details><summary>Do I need a gaming PC?</summary><p>No. It runs on any Windows 10 or 11 PC. An NVIDIA graphics card with 6 GB or more makes it much faster; without one, the wizard picks a smaller model that runs on the CPU.</p></details>
+   <details><summary>Does it work without the internet?</summary><p>Chat, voice and PC control work offline once setup is done. Web research, weather and Gmail need the internet, as you'd expect.</p></details>
+   <details><summary>Can Jarvis do something I didn't want?</summary><p>Risky actions show an Allow once or Deny card first, and every action shows a receipt of what actually ran. Gmail and WhatsApp are read-only.</p></details>
+   <details><summary>How much disk space does it need?</summary><p>About 3 to 8 GB for the model the wizard picks, plus about 1.5 GB if you add voice. The app itself is small.</p></details>
+   <details><summary>Mac or Linux?</summary><p>Windows only for now. Ninja controls Windows apps, media and settings directly.</p></details>
+   <details><summary>Can I use it for my business?</summary><p>The app is MIT licensed. The "Hey Jarvis" wake-word model is for personal, non-commercial use only, so turn the wake word off for commercial use.</p></details>
+   <details><summary>How do I remove it?</summary><p>Quit Ninja from the tray, delete its shortcuts and delete the Ninja folder. Nothing else is installed except Python and Ollama, which you can uninstall from Windows Settings.</p></details>
+  </div>
+ </div>
+</section>
+
+<section class="final">
+ <div class="wrap">
+  <svg class="orb" viewBox="0 0 200 200" aria-hidden="true">
+   <g class="spin" style="transform-origin:50% 50%;animation:spin 24s linear infinite" fill="none" stroke="currentColor" stroke-opacity=".35"><circle cx="100" cy="100" r="92" stroke-dasharray="2 8"/></g>
+   <circle cx="100" cy="100" r="62" fill="none" stroke="currentColor" stroke-width="5"/>
+   <path d="M100 52V40M141.6 124l10.4 6M58.4 124 48 130" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+   <circle cx="100" cy="100" r="22" fill="currentColor" style="transform-origin:50% 50%;animation:pulse 3.2s ease-in-out infinite"/>
+  </svg>
+  <h2 data-reveal>Good evening, sir. Shall we begin?</h2>
+  <p class="sub" data-reveal data-delay="1">Download Ninja, double-click Install, and talk to your own private assistant in a few minutes.</p>
+  <div class="cta" data-reveal data-delay="2">
+   <a class="btn primary" href="https://github.com/Karthik6146/Ninja-Assistant/releases/latest"><svg><use href="#i-down"/></svg>Download for Windows</a>
+   <a class="btn" href="https://github.com/Karthik6146/Ninja-Assistant" target="_blank" rel="noopener"><svg><use href="#i-gh"/></svg>Star on GitHub</a>
+  </div>
+ </div>
+</section>
+
+<footer>
+ <div class="wrap">
+  <span>Ninja Assistant · MIT license · Built on Ollama, Qwen, faster-whisper, Kokoro and openWakeWord.</span>
+  <span><a href="https://github.com/Karthik6146/Ninja-Assistant">GitHub</a> · <a href="https://github.com/Karthik6146/Ninja-Assistant/releases">Releases</a> · <a href="https://github.com/Karthik6146/Ninja-Assistant/blob/main/THIRD_PARTY_NOTICES.md">Licenses</a></span>
+ </div>
+</footer>
+
+<script>
+const still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Nav background once the page scrolls.
+const nav=document.getElementById('nav');
+addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>12),{passive:true});
+
+// Marquee of things to say (the list is doubled so the loop is seamless).
+const SAYINGS=['Noida ka mausam kaisa hai?','Open Spotify','Volume badhao','Any new emails?','Find my resume','Remind me at 7 PM to call mom','Check CPU and memory','Next song','Koi WhatsApp message aaya?','Research the best laptops under ₹60,000','Screen pe kya hai?','Pause the music','Remember that I like short answers','Settings mein Bluetooth kholo'];
+document.getElementById('track').innerHTML=[...SAYINGS,...SAYINGS].map(s=>`<span><svg><use href="#i-mic"/></svg>${s}</span>`).join('');
+
+// Reveal on scroll; stat counters and bars start when they come into view.
+const io=new IntersectionObserver(entries=>entries.forEach(e=>{if(!e.isIntersecting)return;const el=e.target;el.classList.add('shown');
+ el.querySelectorAll('[data-count]').forEach(count);el.querySelectorAll('[data-w]').forEach(b=>b.style.width=b.dataset.w+'%');io.unobserve(el)}),{threshold:.18});
+document.querySelectorAll('[data-reveal]').forEach(el=>io.observe(el));
+function count(el){const end=+el.dataset.count,dec=+(el.dataset.dec||0);if(still){el.textContent=end.toFixed(dec);return}
+ const t0=performance.now(),run=t=>{const p=Math.min(1,(t-t0)/1400),v=end*(1-Math.pow(1-p,3));el.textContent=v.toFixed(dec);if(p<1)requestAnimationFrame(run)};requestAnimationFrame(run)}
+
+// Hero chat: real kinds of requests, each with the tool receipt Ninja shows.
+const DEMO=[
+ ['VLC kholo','Opened VLC','VLC is open, sir.'],
+ ['Noida ka mausam kaisa hai?','weather.now','Noida is 24°C and clear, sir, with a light breeze. No rain expected today.'],
+ ['Remind me tomorrow at 7 PM to call mom','assistant.remind','Done, sir. I will remind you tomorrow at 7 PM to call your mother.'],
+ ['Any new emails?','gmail.list','Three new emails, sir. The most recent is your electricity bill, due on Friday.'],
+];
+const chat=document.getElementById('chat'),mark='<svg class="av"><use href="#mark"/></svg>';
+const wait=ms=>new Promise(r=>setTimeout(r,still?0:ms));
+function add(html,cls){const m=document.createElement('div');m.className='msg '+cls;m.innerHTML=html;chat.append(m);requestAnimationFrame(()=>requestAnimationFrame(()=>m.classList.add('in')));
+ while(chat.children.length>6)chat.firstChild.remove();return m}
+async function type(el,text){for(let i=1;i<=text.length;i++){el.innerHTML=text.slice(0,i)+'<span class="caret"></span>';await wait(still?0:22)}el.textContent=text}
+async function demo(){for(let round=0;;round++){for(const [ask,tool,reply] of DEMO){
+ add(ask,'user');await wait(700);
+ const j=add(mark+'<div><span class="receipt">✓ '+tool+'</span><div class="said"></div></div>','jarvis');await wait(500);
+ await type(j.querySelector('.said'),reply);await wait(2200);
+ if(still)return}}}
+demo();
+</script>
+</body>
+</html>
